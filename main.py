@@ -1,6 +1,8 @@
-"""Brief entry point: runs the evaluation over HTTP against the API (implemented in P4)."""
+"""Brief entry point: evaluates the API against the answer key over HTTP (see `python main.py --help`)."""
 
 import sys
 
+from evaluation.cli import main
+
 if __name__ == "__main__":
-    sys.exit("main.py evaluation runner is implemented in phase P4.")
+    sys.exit(main())
