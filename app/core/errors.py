@@ -79,6 +79,14 @@ class ConflictError(AppError):
     log_level = "info"
 
 
+class UnprocessableError(AppError):
+    """A business-rule check on a well-formed body (e.g. a limit read from config). Same code as DTO errors."""
+
+    status_code = 422
+    code = "VALIDATION_ERROR"
+    log_level = "info"
+
+
 class CreditsError(AppError):
     """Base for 429s. Always carries `Retry-After` so clients know when to come back."""
 

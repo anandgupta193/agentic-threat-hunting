@@ -1,5 +1,6 @@
 """Request/response DTOs for POST /v1/queries (§6). Separate from ORM models and harness types."""
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -59,9 +60,9 @@ class ErrorInfoDTO(BaseModel):
 
 class UsageDTO(BaseModel):
     tokens_used: int
-    tokens_remaining: int | None   # filled once credit metering (P1) is wired in
-    window_start: str | None
-    resets_at: str | None
+    tokens_remaining: int          # as of the response, for the current window
+    window_start: datetime
+    resets_at: datetime
 
 
 class QueryResponse(BaseModel):

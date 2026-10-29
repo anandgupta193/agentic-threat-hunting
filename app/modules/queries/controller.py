@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from app.common.guards import read_user_id
+from app.common.guards import require_user
 from app.modules.queries.dtos import QueryRequest, QueryResponse
 from app.modules.queries.service import QueryService
 
@@ -18,7 +18,7 @@ def get_query_service(request: Request) -> QueryService:
 @router.post("/queries", response_model=QueryResponse)
 async def create_query(
     body: QueryRequest,
-    user_id: Annotated[str, Depends(read_user_id)],
+    user_id: Annotated[str, Depends(require_user)],
     service: Annotated[QueryService, Depends(get_query_service)],
 ) -> QueryResponse:
     return await service.generate(user_id, body)

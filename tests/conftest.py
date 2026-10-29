@@ -2,13 +2,17 @@
 
 import csv
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
 import pytest
 from fastapi import FastAPI
+from sqlalchemy import text
 
+from app.core.clock import FakeClock
 from app.core.config import Settings
+from app.db.engine import Database
 from app.main import create_app
 from app.modules.llm.fake_gateway import FakeGateway
 from app.modules.query_engine.dataset import COLUMNS, build_database
@@ -50,14 +54,31 @@ def fake_llm() -> FakeGateway:
     return FakeGateway()
 
 
+DEFAULT_USER = "analyst-1"
+CLOCK_START = datetime(2026, 10, 29, 10, 0, tzinfo=UTC)  # inside the 06:00–12:00 UTC window
+
+
+async def reset_db(db: Database) -> None:
+    async with db.engine.begin() as conn:
+        await conn.execute(text("TRUNCATE token_usage, query_requests, users"))
+
+
 @pytest.fixture
-def app(settings: Settings, fake_llm: FakeGateway) -> FastAPI:
-    return create_app(settings, llm=fake_llm)
+def clock() -> FakeClock:
+    return FakeClock(CLOCK_START)
+
+
+@pytest.fixture
+def app(settings: Settings, fake_llm: FakeGateway, clock: FakeClock) -> FastAPI:
+    return create_app(settings, clock=clock, llm=fake_llm)
 
 
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+    """A running app on an emptied test DB, with DEFAULT_USER created at the default token limit."""
     async with app.router.lifespan_context(app):
+        await reset_db(app.state.db)
         transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            (await c.post("/v1/users", json={"user_id": DEFAULT_USER})).raise_for_status()
             yield c

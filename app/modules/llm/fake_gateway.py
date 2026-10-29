@@ -1,5 +1,6 @@
 """Scripted gateway for tests: returns queued results (or raises queued errors) and counts calls."""
 
+import asyncio
 from collections import deque
 
 from app.modules.llm.types import LLMRequest, LLMResult, LLMUsage
@@ -11,6 +12,7 @@ class FakeGateway:
     def __init__(self, model: str = "fake-model") -> None:
         self.model = model
         self.calls: list[LLMRequest] = []
+        self.delay_s = 0.0  # > 0 keeps calls in flight, so concurrent admissions overlap in tests
         self._script: deque[LLMResult | Exception] = deque()
 
     def push(self, data: dict, *, input_tokens: int = 1000, output_tokens: int = 200) -> None:
@@ -26,6 +28,8 @@ class FakeGateway:
 
     async def generate(self, request: LLMRequest) -> LLMResult:
         self.calls.append(request)
+        if self.delay_s:
+            await asyncio.sleep(self.delay_s)
         if not self._script:
             raise AssertionError("FakeGateway: no scripted response left")
         item = self._script.popleft()

@@ -2,7 +2,7 @@
 
 - `read_user_id`: header present (401) and well-formed (400)
 - `require_self`: header user must equal the `{user_id}` in the path (403)
-- `require_user` (P1): `read_user_id` + the user must exist (404)
+- `require_user`: `read_user_id` + the user must exist (404)
 
 `X-User-Id` identifies the caller; it is not authentication (see APPROACH §17).
 """
@@ -11,7 +11,7 @@ import re
 from typing import Annotated
 
 import structlog
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Request
 
 from app.core.errors import AuthError, BadRequestError, ForbiddenError
 
@@ -27,6 +27,12 @@ async def read_user_id(x_user_id: Annotated[str | None, Header()] = None) -> str
             "X-User-Id is malformed", details={"allowed": USER_ID_PATTERN.pattern},
         )
     structlog.contextvars.bind_contextvars(user_id=user_id)
+    return user_id
+
+
+async def require_user(request: Request, user_id: Annotated[str, Depends(read_user_id)]) -> str:
+    # The service is read from app.state (not imported) to keep guards free of module imports.
+    await request.app.state.user_service.ensure_exists(user_id)
     return user_id
 
 

@@ -20,6 +20,7 @@ async def test_real_hypothesis_end_to_end() -> None:
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://live", timeout=300) as client:
+            await client.post("/v1/users", json={"user_id": "live-test"})  # 201, or 409 on a re-run
             r = await client.post("/v1/queries", headers={"X-User-Id": "live-test"}, json={
                 "title": "Root Access Through Console",
                 "hypothesis": "Root user console login attempts can be identified in CloudTrail logs",
