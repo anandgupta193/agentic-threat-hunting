@@ -44,7 +44,7 @@ The system has three jobs:
 **Existing assets**
 | File | Use |
 |---|---|
-| `nineteenFeaturesDf.csv` | Log dataset required by the brief (1.04GB, 1,939,214 rows, 19 columns) |
+| `nineteenFeaturesDf.csv` | Log dataset required by the brief (1.04GB, 1,939,207 records, 19 columns; 7 records span two lines) |
 | `hypotheses.json` | 11 hypotheses (ids 1–8, 9a, 9b, 10) |
 | `hypotheses_outcomes.json` | Answer key, a pandas-style dict per hypothesis |
 | `utils.py::load_hypotheses_outcomes` | Reused by the evaluator to load the answer key |
@@ -78,17 +78,19 @@ We use `nineteenFeaturesDf.csv`, as the brief requires (D7). An earlier draft us
 | Hypothesis wording vs. real values | #4 says `UnauthorizedOperation`; the real value is `Client.UnauthorizedOperation` (351,760 rows); `AccessDeniedException` (1,165) exists next to `AccessDenied` | Full value lists in the schema card + the zero-row value check (§8.2) |
 
 **Column cardinality (drives the schema card, §8.2)**
+
+Distinct non-NULL values, measured on the built `cloudtrail.duckdb`. 118 answer-key rows (hypotheses 1, 2, 3, 6, 10) were checked cell by cell against `rowid`, with 0 mismatches.
 | Column | Distinct values |
 |---|---|
-| `userIdentitytype` | 6 |
+| `userIdentitytype` | 5 |
 | `eventType` | 4 |
 | `awsRegion` | 17 |
-| `userIdentityarn` | 58 |
-| `errorCode` | 104 |
+| `userIdentityarn` | 57 |
+| `errorCode` | 103 |
 | `eventSource` | 164 |
-| `requestParametersinstanceType` | 171 |
+| `requestParametersinstanceType` | 170 |
 | `eventName` | 1,242 |
-| `userAgent` | 8,812 |
+| `userAgent` | 8,811 |
 | `sourceIPAddress` | 9,402 |
 
 **Hypothesis shapes (all fully answerable on this dataset)**
@@ -483,11 +485,14 @@ All prompt text lives in **separate files** under `prompts/<version>/`, never as
 - **Extensibility:** `PromptRegistry` is an interface. The file-based implementation is used now; a Langfuse-backed one can replace it later without changing the harness (§18).
 
 ### 8.2 Schema card and zero-row value check (D33)
-**Schema card**, built once by `data-prep` and cached:
-- the 19 columns, all `VARCHAR`, with null rates
-- the **full value list** for low-cardinality columns (≤ 200 distinct values): `userIdentitytype`, `eventType`, `awsRegion`, `userIdentityarn`, `errorCode`, `eventSource`, `requestParametersinstanceType`
-- the **top 30 values plus a few examples** for high-cardinality columns: `eventName`, `userAgent`, `sourceIPAddress`, `errorMessage`
-- data conventions: empty = `NULL`, bracketed user agents, masked usernames, and `CAST(eventTime AS TIMESTAMP)` for time filters
+**Schema card**, built once by `data-prep` and stored in the `_meta` table of `cloudtrail.duckdb`, so the data and its description can't drift apart:
+- the 19 columns, all `VARCHAR`, with null rates and distinct counts
+- **categorical** columns (≤ 200 distinct): the **full value list** with counts: `userIdentitytype`, `eventType`, `awsRegion`, `eventVersion`, `userIdentityarn`, `userIdentityprincipalId`, `userIdentityuserName`, `errorCode`, `eventSource`, `requestParametersinstanceType`
+- **high-cardinality** columns: the **top 30 values** with counts: `eventName`, `userAgent`, `sourceIPAddress`, `userIdentityaccountId`, `userIdentityaccessKeyId`, `errorMessage`
+- **identifiers** (`eventID`, `requestID`): 3 examples only
+- **`eventTime`**: its range (`2017-02-12T19:57:06Z` → `2020-10-07T21:03:30Z`), not frequent values
+- data conventions (empty = `NULL`, bracketed user agents, masked usernames, `CAST(eventTime AS TIMESTAMP)` for time filters) live in the prompt files (§8.1)
+- rendered size: about 8.1K tokens. It is the static, cached part of every prompt; P3 measures the real per-call total against `MAX_CALL_TOKENS` (D37)
 
 **Zero-row value check:** when a query runs but returns 0 rows, the harness extracts each literal compared against a column (`=`, `IN`, `LIKE`) and checks it exists in the data.
 - If one doesn't, the attempt is treated as correctable: *"value 'UnauthorizedOperation' not found in errorCode; closest values: 'Client.UnauthorizedOperation', 'AccessDeniedException'"*.
@@ -765,6 +770,7 @@ Prompt files live in `prompts/<version>/` (§8.1).
 - The answer key mixes raw rows and aggregates with varied column sets. A shape-aware scorer handles both (§9.4).
 - Hypothesis wording doesn't always match real values (`UnauthorizedOperation` vs `Client.UnauthorizedOperation`). Handled by the schema card's value lists and the zero-row value check (§8.2).
 - `enable_external_access=false` would block reading Parquet files at query time, so the data is stored as a native DuckDB file instead (§8.3).
+- The CSV has 1,939,214 lines but 1,939,207 records: 7 quoted fields contain line breaks. DuckDB and Python's `csv` module agree record for record, and the answer-key indices line up with `rowid`.
 
 ## 17. Limitations
 - `X-User-Id` is identification only; production would need real authentication.

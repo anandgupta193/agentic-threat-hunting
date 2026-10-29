@@ -20,7 +20,14 @@ services:
       timeout: 3s
       retries: 20
 
-  # data-prep (CSV -> data/cloudtrail.duckdb) is added in P2; api will then also depend on it.
+  # One-time job: data/nineteenFeaturesDf.csv -> data/cloudtrail.duckdb (skips if the CSV hash is unchanged).
+  data-prep:
+    build: .
+    env_file: .env
+    command: ["python", "scripts/prepare_data.py"]
+    volumes:
+      - ./data:/app/data
+    restart: "no"
 
   api:
     build: .
@@ -36,6 +43,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      data-prep:
+        condition: service_completed_successfully
 
 volumes:
   threat_hunt_pgdata:
