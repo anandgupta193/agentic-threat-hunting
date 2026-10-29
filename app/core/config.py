@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     token_limit_default: int = Field(200_000, gt=0)
     max_token_limit: int = Field(10_000_000, gt=0)
     window_hours: int = Field(6, gt=0)
-    max_call_tokens: int = Field(12_000, gt=0)
+    max_call_tokens: int = Field(15_000, gt=0)
     pending_ttl_s: int = Field(120, gt=0)
     contended_retry_s: int = Field(5, gt=0)
 

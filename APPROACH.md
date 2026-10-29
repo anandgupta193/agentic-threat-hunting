@@ -278,7 +278,7 @@ CREATE INDEX IF NOT EXISTS ix_tu_user_window ON token_usage (user_id, window_sta
   FROM token_usage
   WHERE user_id = :uid AND window_start = :ws;
   ```
-- **Locking:** admission locks only that user's row (`SELECT … FROM users WHERE user_id = :uid FOR UPDATE`). Different users never block each other, and the same user's admissions run one at a time.
+- **Locking:** admission locks only that user's row (`SELECT … FROM users WHERE user_id = :uid FOR NO KEY UPDATE`, D46). Different users never block each other, the same user's admissions run one at a time, and FK checks from concurrent inserts are not blocked.
 
 ---
 
@@ -332,6 +332,8 @@ CREATE INDEX IF NOT EXISTS ix_tu_user_window ON token_usage (user_id, window_sta
              "window_start": "2026-10-29T06:00:00Z", "resets_at": "2026-10-29T12:00:00Z" }
 }
 ```
+
+**Also in the response:** `explanation.output_kind`; `error` (`{code, message}` when `status` is `failed`, e.g. `SELF_CORRECTION_EXHAUSTED`, `CREDITS_EXHAUSTED_MIDWAY`, `QUERY_TIMEOUT`); and `prompt` (`{version, hash, model}`). `query.sql` is the query as written, without the internal row cap. `usage.tokens_remaining` is read when the response is built, so it reflects every call billed so far in the window.
 
 **Request rules**
 - `hypothesis`: required, 5–2000 chars after trimming. `title`: optional, ≤ 200 chars. There is no `id` field, so the generator can't contain answer-key-specific logic (D32).
@@ -404,7 +406,7 @@ retry_after_seconds(now, resets_at) -> ceil((resets_at - now).total_seconds())
 
 ### 7.3 Admission with the in-flight claim
 Each admission is one short transaction. The LLM call happens outside it.
-1. `SELECT … FROM users WHERE user_id = :uid FOR UPDATE`: locks this user only, for milliseconds.
+1. `SELECT … FROM users WHERE user_id = :uid FOR NO KEY UPDATE` (D46): locks this user only, for milliseconds.
 2. Mark this user's pending rows older than `PENDING_TTL_S` as `expired`.
 3. Read `used` and `in_flight` with the hot query (§5).
 4. `remaining ≤ 0` → **Exhausted**: 429 with `Retry-After = resets_at − now`.
@@ -415,9 +417,9 @@ Each admission is one short transaction. The LLM call happens outside it.
 
 **Worked example**
 ```
-used = 195,000 / 200,000, MAX_CALL_TOKENS = 12,000
+used = 195,000 / 200,000, MAX_CALL_TOKENS = 15,000
 A: remaining 5,000, in_flight 0 → admitted → LLM
-B: remaining 5,000, in_flight 1 → 5,000 − 12,000 < 0 → 429 CONTENDED
+B: remaining 5,000, in_flight 1 → 5,000 − 15,000 < 0 → 429 CONTENDED
 A done: 3,500 → used 198,500
 B retry: admitted → 3,500 → used 202,000 (overshoot ≤ one call, by design)
 C: remaining ≤ 0 → 429 EXHAUSTED until 12:00Z
@@ -429,7 +431,7 @@ C: remaining ≤ 0 → 429 EXHAUSTED until 12:00Z
 | Call admitted at 05:59:59, finishes at 06:00:04 | Charged to the 00:00 window (D11) |
 | User created mid-window | Gets the full limit for the current window |
 | `token_limit` changed mid-window (future admin API) | New limit applies from the next admission; past usage unchanged |
-| `MAX_CALL_TOKENS` (static, D37) smaller than a real call | The call still completes and is billed in full; the overshoot is bounded by the call size. The value is measured during P3 and documented |
+| `MAX_CALL_TOKENS` (static, D37) smaller than a real call | The call still completes and is billed in full; the overshoot is bounded by the call size. Measured in P3: real calls used 10.3K–12.3K, so it is set to 15,000 |
 | LLM error, no usage reported | Call `failed`, 0 tokens; 502 returned |
 | LLM timeout | Call `failed`, 0 tokens; 504. Documented risk: the provider may still bill |
 | Self-correction needed but credits ran out partway | Stop retrying; return `status: "failed"`, `error_code: CREDITS_EXHAUSTED_MIDWAY`, with the tokens spent so far |
@@ -475,8 +477,8 @@ All prompt text lives in **separate files** under `prompts/<version>/`, never as
 
 | File | Content |
 |---|---|
-| `system.md` | Role, rules (read-only SQL, the table name, the output contract), null semantics and data quirks |
-| `user_template.md` | Template with placeholders: `{schema_card}`, `{title}`, `{hypothesis}` |
+| `system.md` | Role, rules (read-only SQL, the table name, the output contract), null semantics and data quirks, plus the `{schema_card}` placeholder. Everything static sits here so it is prompt-cached |
+| `user_template.md` | Template with placeholders: `{title}`, `{hypothesis}` |
 | `retry_template.md` | Self-correction template: `{previous_sql}`, `{error}`, `{title}`, `{hypothesis}` |
 
 - **`PromptRegistry`** (`llm/prompt_registry.py`) loads the version named by `PROMPT_VERSION` from `.env` once at startup. It checks that every file and placeholder is present (the app fails fast if one is missing) and computes a content hash.
@@ -492,7 +494,7 @@ All prompt text lives in **separate files** under `prompts/<version>/`, never as
 - **identifiers** (`eventID`, `requestID`): 3 examples only
 - **`eventTime`**: its range (`2017-02-12T19:57:06Z` → `2020-10-07T21:03:30Z`), not frequent values
 - data conventions (empty = `NULL`, bracketed user agents, masked usernames, `CAST(eventTime AS TIMESTAMP)` for time filters) live in the prompt files (§8.1)
-- rendered size: about 8.1K tokens. It is the static, cached part of every prompt; P3 measures the real per-call total against `MAX_CALL_TOKENS` (D37)
+- **slim rendering in the prompt (D45):** value names without counts, 3 examples for opaque ID columns, `eventTime` as a range. About 5.6K Claude tokens; a real call measured 9.6K input tokens on the free model, down from 17.7K with the full card. The stored card keeps every value and count, so the zero-row value check still sees full lists
 
 **Zero-row value check:** when a query runs but returns 0 rows, the harness extracts each literal compared against a column (`=`, `IN`, `LIKE`) and checks it exists in the data.
 - If one doesn't, the attempt is treated as correctable: *"value 'UnauthorizedOperation' not found in errorCode; closest values: 'Client.UnauthorizedOperation', 'AccessDeniedException'"*.
@@ -683,7 +685,7 @@ Together with the API's `result_summary` (what was found), this covers the brief
   TOKEN_LIMIT_DEFAULT=200000
   MAX_TOKEN_LIMIT=10000000
   WINDOW_HOURS=6
-  MAX_CALL_TOKENS=12000           # static worst case for one call (D37); measured in P3
+  MAX_CALL_TOKENS=15000           # measured in P3: largest real call 12.3K + headroom (D37)
   PENDING_TTL_S=120
   CONTENDED_RETRY_S=5
   DATASET_CSV_PATH=./data/nineteenFeaturesDf.csv

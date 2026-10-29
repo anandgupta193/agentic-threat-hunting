@@ -16,11 +16,20 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestContextMiddleware
 from app.db.engine import Database
+from app.modules.credits.controller import router as credits_router
+from app.modules.credits.guard import MeteredCreditGuard
+from app.modules.credits.service import CreditService
+from app.modules.harness.pipeline import GenerationHarness
 from app.modules.llm.factory import build_gateway
+from app.modules.llm.prompt_registry import FilePromptRegistry
 from app.modules.llm.types import LLMGateway
+from app.modules.queries.controller import router as queries_router
+from app.modules.queries.service import QueryService
 from app.modules.query_engine.executor import DuckDBExecutor
 from app.modules.query_engine.schema_card import render_schema_card
 from app.modules.query_engine.value_check import ValueChecker
+from app.modules.users.controller import router as users_router
+from app.modules.users.service import UserService
 
 log = get_logger(__name__)
 
@@ -41,6 +50,11 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        try:
+            prompts = FilePromptRegistry().get(settings.prompt_version)
+        except RuntimeError as exc:
+            log.critical("startup_prompts_failed", prompt_version=settings.prompt_version, error=str(exc))
+            raise
         try:
             executor = DuckDBExecutor(settings.duckdb_path, threads=settings.duckdb_threads,
                                       memory_limit=settings.duckdb_memory_limit, timeout_s=settings.query_timeout_s)
@@ -65,14 +79,23 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
             raise
         app.state.settings = settings
         app.state.db = db
-        app.state.clock = clock or SystemClock()
+        app.state.clock = app_clock = clock or SystemClock()
         app.state.llm = gateway
         app.state.executor = executor
         app.state.schema_card = schema_card
         app.state.schema_card_text = render_schema_card(schema_card)
         app.state.value_checker = ValueChecker(schema_card, executor)
+        harness = GenerationHarness(settings=settings, prompts=prompts, schema_card_text=app.state.schema_card_text,
+                                    llm=gateway, executor=executor, value_checker=app.state.value_checker)
+        app.state.user_service = UserService(db, settings)
+        app.state.credit_service = credits = CreditService(db, settings, app_clock)
+        # Every LLM attempt is admitted and billed through a per-request guard (D12).
+        app.state.query_service = QueryService(
+            harness=harness, settings=settings, db=db, clock=app_clock, credits=credits,
+            guard_factory=lambda user_id, request_id: MeteredCreditGuard(credits, user_id, request_id),
+        )
         log.info("startup_complete", llm_provider=gateway.provider, model=gateway.model,
-                 prompt_version=settings.prompt_version, dataset_rows=schema_card["row_count"])
+                 prompt_version=prompts.version, prompt_hash=prompts.hash, dataset_rows=schema_card["row_count"])
         try:
             yield
         finally:
@@ -85,6 +108,9 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
+    app.include_router(users_router)
+    app.include_router(credits_router)
+    app.include_router(queries_router)
 
     @app.get("/healthz", tags=["ops"])
     async def healthz(request: Request, db: Annotated[Database, Depends(get_db)]) -> JSONResponse:
