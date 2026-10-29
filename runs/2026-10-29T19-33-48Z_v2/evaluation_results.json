@@ -1,0 +1,765 @@
+{
+  "run": {
+    "label": "2026-10-29T19-33-48Z_v2",
+    "mode": "replay",
+    "started_at": "2026-10-29T19:33:48.838659+00:00",
+    "api_base_url": "http://localhost:8000",
+    "user_id": "eval-20261029T193348Z",
+    "token_limit": 200000,
+    "llm_provider": "openrouter",
+    "model": "nvidia/nemotron-3.5-super-vl:free",
+    "prompt_version": "v2",
+    "prompt_hash": "1761c0325962",
+    "max_self_correct": 2,
+    "zero_row_value_check": true,
+    "llm_effort": "medium",
+    "max_result_rows": 10000,
+    "dataset_sha256": "0a5d84b057ea88390033bb63bf05148fbbe94094dcc7537655b0ec4935c918df",
+    "dataset_rows": 1939207,
+    "hypothesis_ids": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9a",
+      "9b",
+      "10"
+    ],
+    "incomplete": false,
+    "finished_at": "2026-10-29T19:38:10.073168+00:00",
+    "source_run": "2026-10-29T19-33-48Z_v2",
+    "replayed_at": "2026-10-29T19:44:22.711028+00:00"
+  },
+  "overall": {
+    "score": 0.7147,
+    "checks": {
+      "ran": 1.0,
+      "columns": 0.4856,
+      "match": 0.7511,
+      "counts": 0.3618
+    },
+    "hypotheses": 11,
+    "scored": 11,
+    "failed": 0,
+    "errors": 0,
+    "skipped": []
+  },
+  "hypotheses": [
+    {
+      "id": "1",
+      "name": "Sign-in Failures (Brute Force/Bot Attacks)",
+      "status": "scored",
+      "score": 0.6316,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.2631578947368421,
+        "match": 0.631578947368421,
+        "counts": null
+      },
+      "error": null,
+      "shape": "rows",
+      "expected": 12,
+      "returned": 26,
+      "matched": 12,
+      "missing": 0,
+      "extra": 14,
+      "precision": 0.4615,
+      "recall": 1.0,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "eventTime": "eventTime",
+        "sourceIPAddress": "sourceIPAddress",
+        "errorMessage": "errorMessage",
+        "awsRegion": "awsRegion",
+        "userIdentityuserName": "userIdentityuserName"
+      },
+      "key_columns": [
+        "eventTime",
+        "sourceIPAddress",
+        "errorMessage",
+        "awsRegion",
+        "userIdentityuserName"
+      ],
+      "missing_examples": [],
+      "extra_examples": [
+        {
+          "eventID": "5bae1ed3-fd9c-47df-a6d4-3d76fc3f3480",
+          "eventTime": "2017-05-17T23:23:34Z",
+          "sourceIPAddress": "8.120.255.102",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+          "eventName": "CheckMfa",
+          "eventSource": "signin.amazonaws.com",
+          "awsRegion": "us-east-1",
+          "eventVersion": "1.05",
+          "userIdentitytype": "IAMUser",
+          "eventType": "AwsConsoleSignIn",
+          "requestID": null,
+          "userIdentityaccountId": "811596193553",
+          "userIdentityprincipalId": null,
+          "userIdentityarn": null,
+          "userIdentityaccessKeyId": null,
+          "userIdentityuserName": "HIDDEN_DUE_TO_SECURITY_REASONS",
+          "errorCode": null,
+          "errorMessage": "No username found in supplied account",
+          "requestParametersinstanceType": null
+        },
+        {
+          "eventID": "4837b058-7c74-49de-86a1-eab37d83c000",
+          "eventTime": "2017-05-17T23:23:40Z",
+          "sourceIPAddress": "8.120.255.102",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+          "eventName": "CheckMfa",
+          "eventSource": "signin.amazonaws.com",
+          "awsRegion": "us-east-1",
+          "eventVersion": "1.05",
+          "userIdentitytype": "IAMUser",
+          "eventType": "AwsConsoleSignIn",
+          "requestID": null,
+          "userIdentityaccountId": "811596193553",
+          "userIdentityprincipalId": null,
+          "userIdentityarn": null,
+          "userIdentityaccessKeyId": null,
+          "userIdentityuserName": "HIDDEN_DUE_TO_SECURITY_REASONS",
+          "errorCode": null,
+          "errorMessage": "No username found in supplied account",
+          "requestParametersinstanceType": null
+        },
+        {
+          "eventID": "94c89a1b-aa0c-4da5-ac56-dc173306fa7e0",
+          "eventTime": "2018-02-26T01:12:46Z",
+          "sourceIPAddress": "231.17.3.165",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/604.5.6 (KHTML, like Gecko) Version/11.0.3 Safari/604.5.6",
+          "eventName": "CheckMfa",
+          "eventSource": "signin.amazonaws.com",
+          "awsRegion": "us-east-1",
+          "eventVersion": "1.05",
+          "userIdentitytype": "IAMUser",
+          "eventType": "AwsConsoleSignIn",
+          "requestID": null,
+          "userIdentityaccountId": "811596193553",
+          "userIdentityprincipalId": null,
+          "userIdentityarn": null,
+          "userIdentityaccessKeyId": null,
+          "userIdentityuserName": "HIDDEN_DUE_TO_SECURITY_REASONS",
+          "errorCode": null,
+          "errorMessage": "No username found in supplied account",
+          "requestParametersinstanceType": null
+        }
+      ],
+      "total_rows": 26,
+      "truncated": false,
+      "sql": "SELECT * FROM cloudtrail WHERE eventType = 'AwsConsoleSignIn' AND (NOT errorCode IS NULL OR NOT errorMessage IS NULL) ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 0.9,
+      "result_summary": "26 rows \u00b7 9 distinct sourceIPAddress \u00b7 8 distinct userAgent \u00b7 2 distinct eventName \u00b7 eventTime 2017-05-17 \u2192 2020-01-18",
+      "attempts": 1,
+      "tokens": 10940,
+      "latency_ms": 8864
+    },
+    {
+      "id": "2",
+      "name": "Root Access Through Console",
+      "status": "scored",
+      "score": 0.9959,
+      "checks": {
+        "ran": 1.0,
+        "columns": 1.0,
+        "match": 0.991869918699187,
+        "counts": null
+      },
+      "error": null,
+      "shape": "rows",
+      "expected": 61,
+      "returned": 62,
+      "matched": 61,
+      "missing": 0,
+      "extra": 1,
+      "precision": 0.9839,
+      "recall": 1.0,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "eventID": "eventID",
+        "eventTime": "eventTime",
+        "sourceIPAddress": "sourceIPAddress",
+        "userAgent": "userAgent",
+        "eventName": "eventName",
+        "eventSource": "eventSource",
+        "awsRegion": "awsRegion",
+        "eventVersion": "eventVersion",
+        "userIdentitytype": "userIdentitytype",
+        "eventType": "eventType",
+        "requestID": "requestID",
+        "userIdentityaccountId": "userIdentityaccountId",
+        "userIdentityprincipalId": "userIdentityprincipalId",
+        "userIdentityarn": "userIdentityarn",
+        "userIdentityaccessKeyId": "userIdentityaccessKeyId",
+        "userIdentityuserName": "userIdentityuserName",
+        "errorCode": "errorCode",
+        "errorMessage": "errorMessage",
+        "requestParametersinstanceType": "requestParametersinstanceType"
+      },
+      "key_columns": [
+        "eventID"
+      ],
+      "missing_examples": [],
+      "extra_examples": [
+        {
+          "eventID": "fc8e23e1-c025-4d45-a33a-4561b5531bc2",
+          "eventTime": "2019-03-03T16:27:05Z",
+          "sourceIPAddress": "2.7.223.252",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.119 Safari/537.36",
+          "eventName": "ConsoleLogin",
+          "eventSource": "signin.amazonaws.com",
+          "awsRegion": "us-east-1",
+          "eventVersion": "1.05",
+          "userIdentitytype": "Root",
+          "eventType": "AwsConsoleSignIn",
+          "requestID": null,
+          "userIdentityaccountId": "811596193553",
+          "userIdentityprincipalId": "811596193553",
+          "userIdentityarn": "arn:aws:iam::811596193553:root",
+          "userIdentityaccessKeyId": null,
+          "userIdentityuserName": null,
+          "errorCode": null,
+          "errorMessage": null,
+          "requestParametersinstanceType": null
+        }
+      ],
+      "total_rows": 62,
+      "truncated": false,
+      "sql": "SELECT * FROM cloudtrail WHERE eventType = 'AwsConsoleSignIn' AND userIdentitytype = 'Root' ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 0.85,
+      "result_summary": "62 rows \u00b7 61 distinct eventID \u00b7 14 distinct sourceIPAddress \u00b7 25 distinct userAgent \u00b7 eventTime 2017-02-18 \u2192 2020-10-07",
+      "attempts": 1,
+      "tokens": 11184,
+      "latency_ms": 18947
+    },
+    {
+      "id": "3",
+      "name": "CloudTrail Disruption",
+      "status": "scored",
+      "score": 0.8421,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.3684210526315789,
+        "match": 1.0,
+        "counts": null
+      },
+      "error": null,
+      "shape": "rows",
+      "expected": 4,
+      "returned": 4,
+      "matched": 4,
+      "missing": 0,
+      "extra": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "eventTime": "eventTime",
+        "errorMessage": "errorMessage",
+        "userIdentityarn": "userIdentityarn",
+        "sourceIPAddress": "sourceIPAddress",
+        "eventName": "eventName",
+        "userAgent": "userAgent",
+        "awsRegion": "awsRegion"
+      },
+      "key_columns": [
+        "eventTime",
+        "errorMessage",
+        "userIdentityarn",
+        "sourceIPAddress",
+        "eventName",
+        "userAgent",
+        "awsRegion"
+      ],
+      "missing_examples": [],
+      "extra_examples": [],
+      "total_rows": 4,
+      "truncated": false,
+      "sql": "WITH disruptive_events AS (SELECT * FROM cloudtrail WHERE eventSource = 'cloudtrail.amazonaws.com' AND eventName IN ('StopLogging', 'DeleteTrail', 'UpdateTrail')) SELECT * FROM disruptive_events ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 1.0,
+      "result_summary": "4 rows \u00b7 3 distinct eventID \u00b7 3 distinct sourceIPAddress \u00b7 3 distinct userAgent \u00b7 eventTime 2017-08-03 \u2192 2019-08-23",
+      "attempts": 1,
+      "tokens": 10619,
+      "latency_ms": 6941
+    },
+    {
+      "id": "4",
+      "name": "Unauthorized API Calls",
+      "status": "scored",
+      "score": 0.653,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.5,
+        "match": 0.7971462544589772,
+        "counts": 0.17064439140811455
+      },
+      "error": null,
+      "shape": "aggregate",
+      "expected": 2387,
+      "returned": 1818,
+      "matched": 1676,
+      "missing": 711,
+      "extra": 142,
+      "precision": 0.9219,
+      "recall": 0.7021,
+      "count_mean_rel_error": 1.6563,
+      "column_map": {
+        "eventName": "eventName",
+        "userIdentityarn": "userIdentityarn",
+        "count": "count"
+      },
+      "key_columns": [
+        "eventName",
+        "userIdentityarn"
+      ],
+      "missing_examples": [
+        {
+          "eventName": "AddRoleToInstanceProfile",
+          "userIdentityarn": "arn:aws:iam::811596193553:user/backup",
+          "count": "1"
+        },
+        {
+          "eventName": "AttachGroupPolicy",
+          "userIdentityarn": "arn:aws:iam::811596193553:user/backup",
+          "count": "2"
+        },
+        {
+          "eventName": "AttachRolePolicy",
+          "userIdentityarn": "arn:aws:iam::811596193553:user/backup",
+          "count": "2"
+        }
+      ],
+      "extra_examples": [
+        {
+          "eventName": "AllocateAddress",
+          "userIdentityarn": "arn:aws:iam::811596193553:user/backup",
+          "count": "3"
+        },
+        {
+          "eventName": "AttachVolume",
+          "userIdentityarn": "arn:aws:iam::811596193553:user/backup",
+          "count": "5"
+        },
+        {
+          "eventName": "AuthorizeSecurityGroupIngress",
+          "userIdentityarn": "arn:aws:iam::811596193553:user/backup",
+          "count": "2"
+        }
+      ],
+      "total_rows": 23010,
+      "truncated": true,
+      "sql": "WITH unauthorized AS (SELECT userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent FROM cloudtrail WHERE errorCode IN ('AccessDenied', 'Client.UnauthorizedOperation')) SELECT userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent, COUNT(*) AS count FROM unauthorized GROUP BY userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent ORDER BY count DESC",
+      "confidence": 0.8,
+      "result_summary": "23,010 rows (first 10,000 shown; stats below cover those) \u00b7 9 distinct userIdentityarn \u00b7 791 distinct eventName \u00b7 2 distinct errorCode",
+      "attempts": 1,
+      "tokens": 11097,
+      "latency_ms": 11546
+    },
+    {
+      "id": "5",
+      "name": "Whoami Reconnaissance",
+      "status": "scored",
+      "score": 0.96,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.8,
+        "match": 1.0,
+        "counts": 1.0
+      },
+      "error": null,
+      "shape": "aggregate",
+      "expected": 4767,
+      "returned": 4767,
+      "matched": 4767,
+      "missing": 0,
+      "extra": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "count_mean_rel_error": 0.0,
+      "column_map": {
+        "userIdentityarn": "userIdentityarn",
+        "sourceIPAddress": "sourceIPAddress",
+        "userAgent": "userAgent",
+        "count": "count"
+      },
+      "key_columns": [
+        "userIdentityarn",
+        "sourceIPAddress",
+        "userAgent"
+      ],
+      "missing_examples": [],
+      "extra_examples": [],
+      "total_rows": 4767,
+      "truncated": false,
+      "sql": "WITH filtered AS (SELECT userIdentityarn, eventName, sourceIPAddress, userAgent FROM cloudtrail WHERE eventName = 'GetCallerIdentity') SELECT userIdentityarn, eventName, sourceIPAddress, userAgent, COUNT(*) AS count FROM filtered GROUP BY userIdentityarn, eventName, sourceIPAddress, userAgent ORDER BY count DESC",
+      "confidence": 0.85,
+      "result_summary": "4,767 rows \u00b7 6 distinct userIdentityarn \u00b7 1 distinct eventName \u00b7 3,262 distinct sourceIPAddress",
+      "attempts": 1,
+      "tokens": 11017,
+      "latency_ms": 11563
+    },
+    {
+      "id": "6",
+      "name": "Secrets Manager Access",
+      "status": "scored",
+      "score": 1.0,
+      "checks": {
+        "ran": 1.0,
+        "columns": 1.0,
+        "match": 1.0,
+        "counts": null
+      },
+      "error": null,
+      "shape": "rows",
+      "expected": 1,
+      "returned": 1,
+      "matched": 1,
+      "missing": 0,
+      "extra": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "eventID": "eventID",
+        "eventTime": "eventTime",
+        "sourceIPAddress": "sourceIPAddress",
+        "userAgent": "userAgent",
+        "eventName": "eventName",
+        "eventSource": "eventSource",
+        "awsRegion": "awsRegion",
+        "eventVersion": "eventVersion",
+        "userIdentitytype": "userIdentitytype",
+        "eventType": "eventType",
+        "requestID": "requestID",
+        "userIdentityaccountId": "userIdentityaccountId",
+        "userIdentityprincipalId": "userIdentityprincipalId",
+        "userIdentityarn": "userIdentityarn",
+        "userIdentityaccessKeyId": "userIdentityaccessKeyId",
+        "userIdentityuserName": "userIdentityuserName",
+        "errorCode": "errorCode",
+        "errorMessage": "errorMessage",
+        "requestParametersinstanceType": "requestParametersinstanceType"
+      },
+      "key_columns": [
+        "eventID"
+      ],
+      "missing_examples": [],
+      "extra_examples": [],
+      "total_rows": 1,
+      "truncated": false,
+      "sql": "SELECT * FROM cloudtrail WHERE eventSource = 'secretsmanager.amazonaws.com' AND eventName = 'GetSecretValue' ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 0.8,
+      "result_summary": "1 rows \u00b7 eventTime 2020-02-04 \u2192 2020-02-04",
+      "attempts": 1,
+      "tokens": 11758,
+      "latency_ms": 50417
+    },
+    {
+      "id": "7",
+      "name": "Large EC2 Instance Creation",
+      "status": "scored",
+      "score": 0.5188,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.05,
+        "match": 0.7719298245614036,
+        "counts": 0.0
+      },
+      "error": null,
+      "shape": "aggregate",
+      "expected": 34,
+      "returned": 23,
+      "matched": 22,
+      "missing": 12,
+      "extra": 1,
+      "precision": 0.9565,
+      "recall": 0.6471,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "instanceType": "requestParametersinstanceType"
+      },
+      "key_columns": [
+        "instanceType"
+      ],
+      "missing_examples": [
+        {
+          "instanceType": "c5.12xlarge",
+          "count": "3758"
+        },
+        {
+          "instanceType": "c5.24xlarge",
+          "count": "2923"
+        },
+        {
+          "instanceType": "c5d.12xlarge",
+          "count": "3838"
+        }
+      ],
+      "extra_examples": [
+        {
+          "instanceType": "i3.metal",
+          "count": null
+        }
+      ],
+      "total_rows": 300622,
+      "truncated": true,
+      "sql": "WITH large_instance_launches AS (SELECT * FROM cloudtrail WHERE eventName = 'RunInstances' AND (requestParametersinstanceType LIKE '%10xlarge%' OR requestParametersinstanceType LIKE '%12xlarge%' OR requestParametersinstanceType LIKE '%16xlarge%' OR requestParametersinstanceType LIKE '%18xlarge%' OR requestParametersinstanceType LIKE '%24xlarge%' OR requestParametersinstanceType LIKE '%32xlarge%' OR requestParametersinstanceType LIKE '%metal%')) SELECT * FROM large_instance_launches ORDER BY eventTime",
+      "confidence": 0.8,
+      "result_summary": "300,622 rows (first 10,000 shown; stats below cover those) \u00b7 9,680 distinct eventID \u00b7 5 distinct sourceIPAddress \u00b7 5 distinct userAgent \u00b7 eventTime 2018-04-16 \u2192 2019-08-21",
+      "attempts": 1,
+      "tokens": 12507,
+      "latency_ms": 52517
+    },
+    {
+      "id": "8",
+      "name": "S3 Bucket Brute Force",
+      "status": "scored",
+      "score": 0.9018,
+      "checks": {
+        "ran": 1.0,
+        "columns": 1.0,
+        "match": 0.7544483985765125,
+        "counts": 1.0
+      },
+      "error": null,
+      "shape": "aggregate",
+      "expected": 212,
+      "returned": 350,
+      "matched": 212,
+      "missing": 0,
+      "extra": 138,
+      "precision": 0.6057,
+      "recall": 1.0,
+      "count_mean_rel_error": 0.0,
+      "column_map": {
+        "userIdentityarn": "userIdentityarn",
+        "sourceIPAddress": "sourceIPAddress",
+        "userAgent": "userAgent",
+        "errorCode": "errorCode",
+        "count": "count"
+      },
+      "key_columns": [
+        "userIdentityarn",
+        "sourceIPAddress",
+        "userAgent",
+        "errorCode"
+      ],
+      "missing_examples": [],
+      "extra_examples": [
+        {
+          "userIdentityarn": "arn:aws:iam::811596193553:root",
+          "sourceIPAddress": "2.251.230.253",
+          "userAgent": "[S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.408 Linux/4.9.93-0.1.ac.178.67.327.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.181-b13 java/1.8.0_181]",
+          "errorCode": null,
+          "count": "2"
+        },
+        {
+          "userIdentityarn": "arn:aws:iam::811596193553:root",
+          "sourceIPAddress": "2.251.230.253",
+          "userAgent": "[S3Console/0.4]",
+          "errorCode": null,
+          "count": "10"
+        },
+        {
+          "userIdentityarn": "arn:aws:iam::811596193553:root",
+          "sourceIPAddress": "250.251.253.3",
+          "userAgent": "[S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.347 Linux/3.2.45-0.6.wd.865.49.315.metal1.x86_64 Java_HotSpot(TM)_64-Bit_Server_VM/25.172-b31 java/1.8.0_172]",
+          "errorCode": null,
+          "count": "13"
+        }
+      ],
+      "total_rows": 350,
+      "truncated": false,
+      "sql": "WITH s3_acl_requests AS (SELECT userIdentityarn, sourceIPAddress, userAgent, errorCode FROM cloudtrail WHERE eventName = 'GetBucketAcl') SELECT userIdentityarn, sourceIPAddress, userAgent, errorCode, COUNT(*) AS count FROM s3_acl_requests GROUP BY userIdentityarn, sourceIPAddress, userAgent, errorCode ORDER BY count DESC",
+      "confidence": 0.85,
+      "result_summary": "350 rows \u00b7 10 distinct userIdentityarn \u00b7 249 distinct sourceIPAddress \u00b7 287 distinct userAgent",
+      "attempts": 1,
+      "tokens": 11526,
+      "latency_ms": 51845
+    },
+    {
+      "id": "9a",
+      "name": "Suspicious User Agents",
+      "status": "scored",
+      "score": 0.3459,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.1,
+        "match": 0.31466666666666665,
+        "counts": 0.0
+      },
+      "error": null,
+      "shape": "aggregate",
+      "expected": 1896,
+      "returned": 354,
+      "matched": 354,
+      "missing": 1542,
+      "extra": 0,
+      "precision": 1.0,
+      "recall": 0.1867,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "userIdentityarn": "userIdentityarn",
+        "userAgent": "userAgent"
+      },
+      "key_columns": [
+        "userIdentityarn",
+        "userAgent"
+      ],
+      "missing_examples": [
+        {
+          "userIdentityarn": "arn:aws:iam::811596193553:user/Level6",
+          "userAgent": "AWSPowerShell/226.1.255.1 .NET_Runtime/4.0 .NET_Framework/4.0 OS/Microsoft_Windows_NT_10.0.01985.0 WindowsPowerShell/5.0 ClientSync",
+          "count": "74"
+        },
+        {
+          "userIdentityarn": "arn:aws:iam::811596193553:user/Level6",
+          "userAgent": "AWSPowerShell/252.6.234.251 .NET_Runtime/3.-1 .NET_Framework/Unknown OS/Unix_218.3.3.1 WindowsPowerShell/7.-1 ClientSync",
+          "count": "37"
+        },
+        {
+          "userIdentityarn": "arn:aws:iam::811596193553:user/Level6",
+          "userAgent": "AWSPowerShell/3.3.542.0 .NET_Runtime/4.0 .NET_Framework/4.0 OS/Microsoft_Windows_NT_10.0.53329.0 WindowsPowerShell/2019.-1 ClientSync",
+          "count": "24"
+        }
+      ],
+      "extra_examples": [],
+      "total_rows": 156930,
+      "truncated": true,
+      "sql": "SELECT * FROM cloudtrail WHERE userAgent ILIKE '%kali%' OR userAgent ILIKE '%parrot%' OR userAgent ILIKE '%powershell%' ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 0.8,
+      "result_summary": "156,930 rows (first 10,000 shown; stats below cover those) \u00b7 9,998 distinct eventID \u00b7 206 distinct sourceIPAddress \u00b7 282 distinct userAgent \u00b7 eventTime 2017-02-27 \u2192 2018-07-31",
+      "attempts": 1,
+      "tokens": 11211,
+      "latency_ms": 18254
+    },
+    {
+      "id": "9b",
+      "name": "Suspicious User Agents",
+      "status": "scored",
+      "score": 0.21,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.05,
+        "match": 0.0,
+        "counts": 0.0
+      },
+      "error": null,
+      "shape": "aggregate",
+      "expected": 101,
+      "returned": 535,
+      "matched": 0,
+      "missing": 101,
+      "extra": 535,
+      "precision": 0.0,
+      "recall": 0.0,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "userAgent": "userAgent"
+      },
+      "key_columns": [
+        "userAgent"
+      ],
+      "missing_examples": [
+        {
+          "userAgent": "command/acm.list-certificates",
+          "count": "1"
+        },
+        {
+          "userAgent": "command/apigateway.create-authorizer",
+          "count": "1"
+        },
+        {
+          "userAgent": "command/apigateway.get-account",
+          "count": "5"
+        }
+      ],
+      "extra_examples": [
+        {
+          "userAgent": "[aws-cli/2.0.36 Python/3.7.3 Linux/5.0.0-38-generic exe/x86_64.ubuntu.19 command/s3.ls]",
+          "count": null
+        },
+        {
+          "userAgent": "[aws-cli/2.0.36 Python/3.7.3 Linux/5.0.0-38-generic exe/x86_64.ubuntu.19 command/s3api.get-bucket-acl]",
+          "count": null
+        },
+        {
+          "userAgent": "[aws-cli/2.0.36 Python/3.7.3 Linux/5.0.0-38-generic exe/x86_64.ubuntu.19 command/s3api.get-bucket-lifecycle-configuration]",
+          "count": null
+        }
+      ],
+      "total_rows": 3047,
+      "truncated": false,
+      "sql": "SELECT * FROM cloudtrail WHERE userAgent LIKE '%command/%' ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 0.8,
+      "result_summary": "3,047 rows \u00b7 97 distinct sourceIPAddress \u00b7 535 distinct userAgent \u00b7 99 distinct eventName \u00b7 eventTime 2020-08-03 \u2192 2020-10-07",
+      "attempts": 2,
+      "tokens": 22163,
+      "latency_ms": 19758
+    },
+    {
+      "id": "10",
+      "name": "Permanent Key Creation",
+      "status": "scored",
+      "score": 0.8026,
+      "checks": {
+        "ran": 1.0,
+        "columns": 0.21052631578947367,
+        "match": 1.0,
+        "counts": null
+      },
+      "error": null,
+      "shape": "rows",
+      "expected": 40,
+      "returned": 40,
+      "matched": 40,
+      "missing": 0,
+      "extra": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "count_mean_rel_error": null,
+      "column_map": {
+        "sourceIPAddress": "sourceIPAddress",
+        "userIdentityarn": "userIdentityarn",
+        "errorCode": "errorCode",
+        "errorMessage": "errorMessage"
+      },
+      "key_columns": [
+        "sourceIPAddress",
+        "userIdentityarn",
+        "errorCode",
+        "errorMessage"
+      ],
+      "missing_examples": [],
+      "extra_examples": [],
+      "total_rows": 40,
+      "truncated": false,
+      "sql": "WITH iam_key_creation AS (SELECT * FROM cloudtrail WHERE eventName = 'CreateAccessKey' AND userIdentitytype = 'IAMUser') SELECT * FROM iam_key_creation ORDER BY CAST(eventTime AS TIMESTAMP)",
+      "confidence": 0.9,
+      "result_summary": "40 rows \u00b7 32 distinct eventID \u00b7 20 distinct sourceIPAddress \u00b7 20 distinct userAgent \u00b7 eventTime 2017-03-01 \u2192 2020-05-14",
+      "attempts": 1,
+      "tokens": 11092,
+      "latency_ms": 9401
+    }
+  ],
+  "credits": {
+    "user_id": "eval-20261029T193348Z",
+    "token_limit": 200000,
+    "tokens_used": 135114,
+    "tokens_remaining": 64886,
+    "in_flight": 0,
+    "window_start": "2026-10-29T18:00:00Z",
+    "resets_at": "2026-10-30T00:00:00Z"
+  },
+  "usage": {
+    "calls": 12,
+    "input_tokens": 119150,
+    "output_tokens": 15964,
+    "total_tokens": 135114
+  }
+}

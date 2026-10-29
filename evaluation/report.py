@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from evaluation.loaders import load_notes
 from evaluation.scorer import CHECKS, HypothesisScore, overall
 
 CELL_MAX = 60
@@ -82,8 +83,11 @@ def render_report(results: dict[str, Any]) -> str:
                      f"{_n(h['returned'])} | {_n(h['matched'])} | {_n(h['missing'])} | {_n(h['extra'])} | "
                      f"{h['attempts'] or '–'} | {_n(h['tokens'])} |")
     lines += ["", "## Expected vs found", ""]
+    notes = load_notes()
     for h in results["hypotheses"]:
         lines += [f"### {h['id']}. {h['name']}: {h['status']}", ""]
+        if note := notes.get(h["id"]):
+            lines += [f"> **Answer-key note:** {note}", ""]
         if h["status"] != "scored":
             lines += [f"Not scored: `{h['error']}`.", ""]
             continue

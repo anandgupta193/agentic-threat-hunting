@@ -1,8 +1,8 @@
 # Evaluation report: 2026-10-29T19-19-34Z_v1
 
 - Prompt `v1` (`9cd12dc42e98`), model `nvidia/nemotron-3.5-super-vl:free` via `openrouter`; self-correction 0, value check False
-- Mode: live
-- **Overall score: 0.50** · ran 1.00 · columns 0.28 · rows/groups 0.49 · counts 0.00
+- Mode: replay (source `2026-10-29T19-19-34Z_v1`)
+- **Overall score: 0.50** · ran 1.00 · columns 0.26 · rows/groups 0.49 · counts 0.00
 - 11 scored, 0 failed, 0 errors, skipped: none
 - Tokens: 121,673 over 11 LLM calls
 
@@ -16,13 +16,15 @@
 | 6 | Secrets Manager Access | scored | 0.40 | 1.00 | 0.58 | 0.01 | – | 1 | 398 | 1 | 0 | 397 | 1 | 11,345 |
 | 7 | Large EC2 Instance Creation | scored | 0.57 | 1.00 | 0.08 | 0.89 | 0.00 | 34 | 42 | 34 | 0 | 8 | 1 | 12,029 |
 | 8 | S3 Bucket Brute Force | scored | 0.38 | 1.00 | 0.15 | 0.37 | 0.00 | 163 | 67 | 42 | 121 | 25 | 1 | 11,422 |
-| 9a | Suspicious User Agents | scored | 0.42 | 1.00 | 0.30 | 0.41 | 0.00 | 1,896 | 485 | 485 | 1,411 | 0 | 1 | 10,649 |
+| 9a | Suspicious User Agents | scored | 0.40 | 1.00 | 0.18 | 0.41 | 0.00 | 1,896 | 485 | 485 | 1,411 | 0 | 1 | 10,649 |
 | 9b | Suspicious User Agents | scored | 0.22 | 1.00 | 0.08 | 0.00 | 0.00 | 101 | 535 | 0 | 101 | 535 | 1 | 10,615 |
 | 10 | Permanent Key Creation | scored | 0.81 | 1.00 | 0.22 | 1.00 | – | 40 | 40 | 40 | 0 | 0 | 1 | 11,168 |
 
 ## Expected vs found
 
 ### 1. Sign-in Failures (Brute Force/Bot Attacks): scored
+
+> **Answer-key note:** The answer key keeps only the 12 failed ConsoleLogin events. The data has 26 failed console sign-ins: 12 ConsoleLogin plus 14 CheckMfa with the same 'No username found in supplied account' message, which a hunter would also want. The hypothesis' 'brute force' wording also invites grouped counts, while the key lists events.
 
 Expected 12 rows, returned 0 (total 0): 0 matched, 12 missing, 0 extra. Matched on `sourceIPAddress`.
 API summary: 0 rows
@@ -66,6 +68,8 @@ Extra (returned, not expected):
 - eventTime=`2019-02-11T16:43:38Z`, userIdentityarn=`arn:aws:sts::811596193553:assumed-role/AWSServiceRoleForClo…`, eventSource=`cloudtrail.amazonaws.com`, eventName=`CreateTrail`, awsRegion=`us-east-1`, sourceIPAddress=`cloudtrail.amazonaws.com`, eventID=`afa81985-bf03-4d04-8cf7-2d6bb60729fb`, errorCode=`ThrottlingException`, errorMessage=`Rate exceeded`
 
 ### 4. Unauthorized API Calls: scored
+
+> **Answer-key note:** The hypothesis names AccessDenied and UnauthorizedOperation. With the real value Client.UnauthorizedOperation there are 2,679 (eventName, userIdentityarn) groups; the key has 2,387, close to AccessDenied alone (2,411), so some groups and counts cannot match.
 
 Expected 2,387 groups, returned 1,500 (total 473,913, truncated): 1,372 matched, 1,015 missing, 128 extra. Matched on `eventName, userIdentityarn`.
 API summary: 473,913 rows (first 10,000 shown; stats below cover those) · 115 distinct eventSource · 676 distinct eventName · 16 distinct awsRegion · eventTime 2020-09-11 → 2020-10-07
@@ -133,6 +137,8 @@ Extra (returned, not expected):
 
 ### 8. S3 Bucket Brute Force: scored
 
+> **Answer-key note:** The answer key keeps only failed GetBucketAcl requests (AccessDenied, NoSuchBucket): 212 of the 350 (actor, IP, user agent, error code) groups. The hypothesis covers all attempts, so successful ones count as extra.
+
 Expected 163 groups, returned 67 (total 100): 42 matched, 121 missing, 25 extra. Matched on `userIdentityarn, sourceIPAddress`.
 API summary: 100 rows · 61 distinct sourceIPAddress · 6 distinct userIdentityarn · 17 distinct userIdentityaccessKeyId
 
@@ -168,6 +174,8 @@ Missing (expected, not returned):
 - userIdentityarn=`arn:aws:iam::811596193553:user/Level6`, userAgent=`AWSPowerShell/252.6.234.251 .NET_Runtime/3.-1 .NET_Framewor…`, count=`37`
 
 ### 9b. Suspicious User Agents: scored
+
+> **Answer-key note:** The answer key's userAgent values are the 'command/...' substring extracted from longer user-agent strings. No userAgent in the data starts with 'command/', so no query over the raw column can reproduce these groups.
 
 Expected 101 groups, returned 535 (total 3,047): 0 matched, 101 missing, 535 extra. Matched on `userAgent`.
 API summary: 3,047 rows · 97 distinct sourceIPAddress · 535 distinct userAgent · 99 distinct eventName · eventTime 2020-08-03 → 2020-10-07

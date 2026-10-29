@@ -101,3 +101,11 @@ def test_runner_retries_once_then_skips_after_exhaustion(tmp_path: Path) -> None
     replayed_folder, replayed = replay(folder, HYPOTHESES, EXPECTED, tmp_path)
     assert replayed["overall"] == results["overall"]
     assert json.loads((replayed_folder / "run_config.json").read_text())["mode"] == "replay"
+
+
+def test_raw_rows_never_use_an_id_column_as_the_count() -> None:
+    expected = Table.build(["instanceType", "count"], [["p2.16xlarge", 3]])
+    s = score_response("x", "x", expected, body(["requestParametersinstanceType", "userIdentityaccountId"],
+                                                [["p2.16xlarge", "811596193553"]]))
+    assert s.comparison is not None and "count" not in s.comparison.column_map
+    assert s.checks["counts"] == 0.0
