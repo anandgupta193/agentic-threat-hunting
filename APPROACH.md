@@ -278,7 +278,7 @@ CREATE INDEX IF NOT EXISTS ix_tu_user_window ON token_usage (user_id, window_sta
   FROM token_usage
   WHERE user_id = :uid AND window_start = :ws;
   ```
-- **Locking:** admission locks only that user's row (`SELECT … FROM users WHERE user_id = :uid FOR UPDATE`). Different users never block each other, and the same user's admissions run one at a time.
+- **Locking:** admission locks only that user's row (`SELECT … FROM users WHERE user_id = :uid FOR NO KEY UPDATE`, D46). Different users never block each other, the same user's admissions run one at a time, and FK checks from concurrent inserts are not blocked.
 
 ---
 
@@ -333,7 +333,7 @@ CREATE INDEX IF NOT EXISTS ix_tu_user_window ON token_usage (user_id, window_sta
 }
 ```
 
-**Also in the response:** `explanation.output_kind`; `error` (`{code, message}` when `status` is `failed`, e.g. `SELF_CORRECTION_EXHAUSTED`, `CREDITS_EXHAUSTED_MIDWAY`, `QUERY_TIMEOUT`); and `prompt` (`{version, hash, model}`). `query.sql` is the query as written, without the internal row cap. Until credit metering is wired in (P1), `usage.tokens_remaining`, `window_start` and `resets_at` are `null`.
+**Also in the response:** `explanation.output_kind`; `error` (`{code, message}` when `status` is `failed`, e.g. `SELF_CORRECTION_EXHAUSTED`, `CREDITS_EXHAUSTED_MIDWAY`, `QUERY_TIMEOUT`); and `prompt` (`{version, hash, model}`). `query.sql` is the query as written, without the internal row cap. `usage.tokens_remaining` is read when the response is built, so it reflects every call billed so far in the window.
 
 **Request rules**
 - `hypothesis`: required, 5–2000 chars after trimming. `title`: optional, ≤ 200 chars. There is no `id` field, so the generator can't contain answer-key-specific logic (D32).
@@ -406,7 +406,7 @@ retry_after_seconds(now, resets_at) -> ceil((resets_at - now).total_seconds())
 
 ### 7.3 Admission with the in-flight claim
 Each admission is one short transaction. The LLM call happens outside it.
-1. `SELECT … FROM users WHERE user_id = :uid FOR UPDATE`: locks this user only, for milliseconds.
+1. `SELECT … FROM users WHERE user_id = :uid FOR NO KEY UPDATE` (D46): locks this user only, for milliseconds.
 2. Mark this user's pending rows older than `PENDING_TTL_S` as `expired`.
 3. Read `used` and `in_flight` with the hot query (§5).
 4. `remaining ≤ 0` → **Exhausted**: 429 with `Retry-After = resets_at − now`.
