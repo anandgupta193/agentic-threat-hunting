@@ -12,12 +12,16 @@ from sqlalchemy.engine import URL
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # LLM
+    # LLM. Provider "anthropic" = API key (default, for evaluators);
+    # "claude_code" = local Claude Code CLI on the developer's subscription.
+    llm_provider: Literal["anthropic", "claude_code"] = "anthropic"
     anthropic_api_key: SecretStr = SecretStr("")
     llm_model: str = "claude-sonnet-5-5"
-    llm_temperature: float = Field(0.0, ge=0.0, le=1.0)
-    llm_max_tokens: int = Field(2000, gt=0)
-    llm_timeout_s: float = Field(60.0, gt=0)
+    llm_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+    llm_max_tokens: int = Field(8000, gt=0)
+    llm_timeout_s: float = Field(90.0, gt=0)
+    claude_cli_path: str = "claude"
+    claude_cli_max_concurrency: int = Field(2, gt=0)
     prompt_version: str = "v2"
 
     # Postgres (credit store)

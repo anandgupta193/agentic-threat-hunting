@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from app.core.config import Settings
 from app.main import create_app
+from app.modules.llm.fake_gateway import FakeGateway
 
 
 @pytest.fixture(scope="session")
@@ -17,8 +18,13 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def app(settings: Settings) -> FastAPI:
-    return create_app(settings)
+def fake_llm() -> FakeGateway:
+    return FakeGateway()
+
+
+@pytest.fixture
+def app(settings: Settings, fake_llm: FakeGateway) -> FastAPI:
+    return create_app(settings, llm=fake_llm)
 
 
 @pytest.fixture

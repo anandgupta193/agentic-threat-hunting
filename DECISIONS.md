@@ -19,7 +19,7 @@
 | D3 | Log query engine | DuckDB embedded in the API process, over a native `cloudtrail.duckdb` file (see D39, D41) | Fast columnar analytics; SQL is easy to validate. Sync library, so it runs in `asyncio.to_thread` | ✅ | 2026-10-29 |
 | D4 | Overspend policy | "Let it finish, block the next" + **in-flight claim** | Overshoot capped at 1 call; concurrent calls can't both spend the last credits; DB lock held for milliseconds, never during the LLM call | ✅ | 2026-10-29 |
 | D5 | Architecture | Modular monolith: modules talk only through service interfaces | Clear boundaries, easy to test and to split later | ✅ | 2026-10-29 |
-| D6 | LLM | Claude Sonnet 5.5 (`claude-sonnet-5-5`) via `AsyncAnthropic`, **temperature 0**, model set in `.env` | Good SQL quality for the cost; temperature 0 makes runs repeatable. Tokens come from `response.usage` | ✅ | 2026-10-29 |
+| D6 | LLM | Claude Sonnet 5.5 (`claude-sonnet-5-5`), model and `LLM_EFFORT` (default `medium`) set in `.env`; **structured outputs** (`output_config.format` = JSON schema) for the generation contract; no sampling params | Good SQL quality for the cost. Sonnet 5.5 rejects forced `tool_choice` and non-default `temperature`, so schema-constrained output replaces tool use and effort replaces temperature. Tokens come from the reported usage | ✅ | 2026-10-29 |
 | D7 | Dataset | `nineteenFeaturesDf.csv`, converted once into `data/cloudtrail.duckdb` (D39) | The brief requires it and it matches the answer key row for row | ✅ | 2026-10-29 |
 | D8 | Answer key never shown to the LLM | Generator sees only the hypothesis + schema card | Avoids leakage; evaluation stays honest | ✅ | 2026-10-29 |
 | D9 | Cached input tokens | `input_tokens + cache_read + cache_creation` all count toward credits | "Count what the LLM reports"; conservative | ✅ | 2026-10-29 |
@@ -56,7 +56,8 @@
 | D40 | Before/after runs (Q10) | **Two official runs**: before = prompt v1, `MAX_SELF_CORRECT=0`, value check off; after = prompt v2 + all features on. v1 must be an honest first attempt | Simple, clear before/after. Ablation ladder → future scope | ✅ | 2026-10-29 |
 | D41 | SQL safety (Q14) | **Allowlist validator** (one SELECT/WITH, only `cloudtrail`, only 19 columns, approved functions, LIMIT capped) **+ locked-down DuckDB** (`read_only`, `enable_external_access=false`, `lock_configuration=true`, threads/memory limits, timeout) | Defence in depth; clear errors for self-correction; safe even if the validator has a gap | ✅ | 2026-10-29 |
 | D42 | `main.py` failure handling (Q15) | `failed` → 0 and continue; EXHAUSTED → stop, rest `skipped`; CONTENDED → wait once; 502/504 → retry once, then `error`; unreachable/Ctrl-C → stop, run marked `incomplete` | Never wastes a whole run on one hiccup; always an honest record. `--resume` → future scope | ✅ | 2026-10-29 |
-| D43 | LLM in tests (Q13) | `FakeGateway` by default + **one opt-in `pytest -m live`** test (skipped without an API key) | Fakes prove the logic; one live test proves the Anthropic contract (usage fields, tool-output shape) | ✅ | 2026-10-29 |
+| D43 | LLM in tests (Q13) | `FakeGateway` by default + **one opt-in `pytest -m live`** test (skipped without an API key) | Fakes prove the logic; one live test proves the Anthropic contract (usage fields, structured-output shape) | ✅ | 2026-10-29 |
+| D44 | LLM provider | `LLM_PROVIDER` switch behind the `LLMGateway` interface: `anthropic` (API key; default, used by evaluators and the official runs when a key is available) and `claude_code` (local Claude Code CLI in headless mode on the developer's own subscription; dev only). Both use the same JSON-schema contract and report usage that is billed the same way (D9) | The developer has a Claude subscription but no API key. The subscription token is never extracted or used against the API directly; the CLI is used as-is. `claude_code` is slower (one process per call) and only runs where the CLI is installed and logged in, so not inside the Docker image | ✅ | 2026-10-29 |
 
 ---
 
@@ -77,6 +78,7 @@
 | D37 | `MAX_CALL_TOKENS=8000` placeholder | 12,000 (static) | The schema card with full value lists makes calls larger |
 | D36 | Parsed `TIMESTAMP` column next to the original string | All 19 columns as text, no helper columns | Helper columns would break strict `SELECT *` matching |
 | D41 | Denylist validator | Allowlist + locked-down DuckDB | Anything not on a denylist slips through; the allowlist fails closed |
+| D6 | Tool use (forced `tool_choice`) for structured output + `temperature=0` | Structured outputs (`output_config.format`) + `LLM_EFFORT` | Both are rejected with a 400 by `claude-sonnet-5-5`; found while building the gateway |
 
 ---
 
@@ -101,3 +103,4 @@
 | v0.8 | Dedicated docker-compose Postgres on port 5433, `.env` as the single config source, evaluator quick start (D26) |
 | v0.9 | Prompts as versioned files + `PromptRegistry` (§8.1, D27); Langfuse added to future scope (D28) |
 | v1.0 | Grilling outcomes D29–D43: iteration policy, strict scoring, `include_results`/`title`, schema card + zero-row value check, deterministic confidence, expected-vs-found, 19-column text view, static `MAX_CALL_TOKENS`=12K, two runs, real-HTTP `main.py`, `data-prep` service + `.duckdb`, allowlist + locked-down DuckDB, failure handling, opt-in live test; new future-scope items |
+| v1.1 | D6 updated (structured outputs, effort instead of temperature); D44 dual LLM provider (`anthropic` / `claude_code`) |
