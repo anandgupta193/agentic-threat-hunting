@@ -61,9 +61,11 @@ OK = {"status": "succeeded", "result": {"columns": ["eventName"], "rows": [["Con
       "usage": {"tokens_used": 100}}
 
 
-def stub_api(query_replies: list[tuple[int, dict[str, Any]]]) -> httpx.Client:
-    """Health, user creation and account reads always succeed; /v1/queries replies come from the list in order."""
+def stub_api(query_replies: list[tuple[int, dict[str, Any]]], sent_ids: list[str] | None = None) -> httpx.Client:
+    """Health, user creation and account reads always succeed; /v1/queries replies come from the list in order.
+    Each query gets server request id `srv-<n>`; the client's `X-Request-Id` values are appended to `sent_ids`."""
     replies = iter(query_replies)
+    served = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
@@ -74,8 +76,13 @@ def stub_api(query_replies: list[tuple[int, dict[str, Any]]]) -> httpx.Client:
             return httpx.Response(201, json={"user_id": "eval", "token_limit": 1000})
         if path.endswith("/credits") or path.endswith("/usage"):
             return httpx.Response(200, json={"totals": {"calls": 1, "total_tokens": 100}})
+        nonlocal served
+        served += 1
+        if sent_ids is not None:
+            sent_ids.append(request.headers.get("x-request-id", ""))
         status, payload = next(replies)
-        return httpx.Response(status, json=payload, headers={"Retry-After": "1"} if status == 429 else {})
+        headers = {"X-Request-Id": f"srv-{served}"} | ({"Retry-After": "1"} if status == 429 else {})
+        return httpx.Response(status, json=payload, headers=headers)
 
     return httpx.Client(transport=httpx.MockTransport(handler), base_url="http://api")
 
@@ -85,11 +92,12 @@ def err(code: str) -> dict[str, Any]:
 
 
 def test_runner_retries_once_then_skips_after_exhaustion(tmp_path: Path) -> None:
+    sent_ids: list[str] = []
     client = stub_api([
         (502, err("LLM_ERROR")), (200, OK),          # #1: one upstream retry, then scored
         (429, err("CREDITS_CONTENDED")), (200, OK),  # #2: waits Retry-After once, then scored
         (429, err("CREDITS_EXHAUSTED")),             # #3: stop; skipped
-    ])
+    ], sent_ids)
     waits: list[float] = []
     folder, results = LiveRunner(client, HYPOTHESES, EXPECTED, tmp_path, copy_to_root=False,
                                  sleep=waits.append).run()
@@ -97,6 +105,9 @@ def test_runner_retries_once_then_skips_after_exhaustion(tmp_path: Path) -> None
     assert results["overall"]["score"] == 1.0 and results["overall"]["skipped"] == ["3"]
     assert waits == [5.0, 1.0]
     assert (folder / "report.md").exists() and not (folder / "responses" / "3.json").exists()
+    assert sent_ids == [f"{folder.name}/{h}" for h in ("1", "1", "2", "2", "3")]  # server logs it as client_request_id
+    log = (folder / "run.log").read_text()
+    assert "request_id=srv-2" in log and "request_id=srv-4" in log and "credits exhausted" in log
 
     replayed_folder, replayed = replay(folder, HYPOTHESES, EXPECTED, tmp_path)
     assert replayed["overall"] == results["overall"]
@@ -111,7 +122,7 @@ def test_raw_rows_never_use_an_id_column_as_the_count() -> None:
     assert s.checks["counts"] == 0.0
 
 
-def test_dashboard_embeds_both_runs_safely(tmp_path: Path) -> None:
+def test_dashboard_embeds_both_runs_safely() -> None:
     from evaluation.dashboard import render_dashboard
     run = {"run": {"label": "r"}, "overall": {"score": 0.5, "checks": {}}, "usage": None,
            "hypotheses": [{"id": "1", "name": "</script><b>x", "score": 0.5, "checks": {}}]}
