@@ -366,6 +366,9 @@ Each live run gets a new folder, `runs/<timestamp>_<prompt>/`, holding:
 - `responses/<id>.json`
 - `evaluation_results.json`, which a full live run also copies to the repo root
 - `report.md`
+- `run.log`: the progress lines, each with the server's `request_id`. Every query is also sent with
+  `X-Request-Id: <run>/<hypothesis id>`, which the server logs as `client_request_id`, so a run's server log lines can
+  be found with one grep.
 
 ### 9.4 Scoring
 **Both sides are normalised the same way first:**

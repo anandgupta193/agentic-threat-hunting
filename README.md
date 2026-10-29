@@ -160,6 +160,13 @@ Each run writes `runs/<timestamp>_<prompt>/`: the raw responses, `run_config.jso
 `/healthz`), `evaluation_results.json` and `report.md`. A live run of all hypotheses also copies `evaluation_results.json`
 to the repo root. Scoring is strict and explained in APPROACH §9 and [`EVALUATION_REPORT.md`](EVALUATION_REPORT.md).
 
+**Tracing a run in the server logs.**
+- **`run.log`:** a live run also writes its progress lines to `run.log`, and each line names the server's `request_id`.
+- **Request IDs:** every query is sent with `X-Request-Id: <run>/<hypothesis id>`, and every server log line for that
+  request carries it as `client_request_id`.
+- **Example:** `docker compose logs api | grep '<run>/9b'` shows everything the server did for #9b
+  in that run: credit admissions, LLM calls, retries and errors.
+
 To reproduce the two official runs, start the API with these settings, then run `python main.py`:
 
 | Run | Server settings |

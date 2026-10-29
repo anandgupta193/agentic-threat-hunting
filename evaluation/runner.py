@@ -1,5 +1,9 @@
 """Evaluation runs (§9.1–9.6). A live run talks to the API over real HTTP only (D38); replay and compare are
-offline. Every response is saved as soon as it arrives, so an interrupted run keeps what it has done."""
+offline. Every response is saved as soon as it arrives, so an interrupted run keeps what it has done.
+
+Each query is sent with `X-Request-Id: <run label>/<hypothesis id>`, which the server logs as `client_request_id`,
+and each progress line names the server's `request_id`, so a run can be matched to the server logs. Progress lines go
+to stderr and to `run.log` in the run folder."""
 
 import json
 import shutil
@@ -34,10 +38,6 @@ def _stamp(now: datetime) -> str:
     return now.strftime("%Y-%m-%dT%H-%M-%SZ")
 
 
-def _log(msg: str) -> None:
-    print(msg, file=sys.stderr, flush=True)
-
-
 class LiveRunner:
     def __init__(self, client: httpx.Client, hypotheses: list[Hypothesis], expected: dict[str, Table],
                  runs_dir: Path, *, token_limit: int | None = None, copy_to_root: bool = True,
@@ -49,6 +49,7 @@ class LiveRunner:
         self._token_limit = token_limit
         self._copy_to_root = copy_to_root
         self._sleep = sleep
+        self._log_path: Path | None = None
 
     def run(self) -> tuple[Path, dict[str, Any]]:
         health = self._health()
@@ -66,8 +67,9 @@ class LiveRunner:
             "model": llm["model"], **harness, "hypothesis_ids": [h.id for h in self._hypotheses], "incomplete": False,
         }
         (folder / "responses").mkdir(parents=True)
-        _log(f"Run {label}: {len(self._hypotheses)} hypotheses as {user_id} "
-             f"(limit {config['token_limit']:,} tokens) → {folder}")
+        self._log_path = folder / "run.log"
+        self._log(f"Run {label}: {len(self._hypotheses)} hypotheses as {user_id} "
+                  f"(limit {config['token_limit']:,} tokens) → {folder}")
 
         scores: list[HypothesisScore] = []
         bodies: dict[str, dict[str, Any]] = {}
@@ -77,25 +79,27 @@ class LiveRunner:
                 scores.append(score_response(h.id, h.name, self._expected[h.id], None))
                 continue
             try:
-                body, error = self._query(h, user_id, harness["max_result_rows"])
+                body, error, request_id = self._query(h, f"{label}/{h.id}", user_id, harness["max_result_rows"])
             except _CreditsExhausted:
                 stop = "credits exhausted"
-                _log(f"[{i}/{len(self._hypotheses)}] #{h.id}: credits exhausted, the rest are skipped")
+                self._log(f"[{i}/{len(self._hypotheses)}] #{h.id}: credits exhausted, the rest are skipped")
                 scores.append(score_response(h.id, h.name, self._expected[h.id], None))
                 continue
             except (httpx.TransportError, KeyboardInterrupt) as exc:
                 stop = "interrupted"
                 config["incomplete"] = True
-                _log(f"[{i}/{len(self._hypotheses)}] #{h.id}: run interrupted ({type(exc).__name__}); saving progress")
+                self._log(f"[{i}/{len(self._hypotheses)}] #{h.id}: run interrupted ({type(exc).__name__}); "
+                          "saving progress")
                 scores.append(score_response(h.id, h.name, self._expected[h.id], None))
                 continue
             (folder / "responses" / f"{h.id}.json").write_text(json.dumps(body, separators=(",", ":")) + "\n")
             bodies[h.id] = body
             s = score_response(h.id, h.name, self._expected[h.id], None if error else body, error)
             scores.append(s)
-            _log(f"[{i}/{len(self._hypotheses)}] #{h.id} {h.name}: {s.status} "
-                 f"score={'–' if s.score is None else f'{s.score:.2f}'}"
-                 f"{f' ({s.error})' if s.error else ''} tokens={(body.get('usage') or {}).get('tokens_used', '–')}")
+            self._log(f"[{i}/{len(self._hypotheses)}] #{h.id} {h.name}: {s.status} "
+                      f"score={'–' if s.score is None else f'{s.score:.2f}'}"
+                      f"{f' ({s.error})' if s.error else ''} "
+                      f"tokens={(body.get('usage') or {}).get('tokens_used', '–')} request_id={request_id}")
 
         credits, usage = self._account(user_id)
         config["finished_at"] = datetime.now(UTC).isoformat()
@@ -115,15 +119,25 @@ class LiveRunner:
         health: dict[str, Any] = r.json()
         return health
 
-    def _query(self, h: Hypothesis, user_id: str, max_rows: int) -> tuple[dict[str, Any], str | None]:
-        """Returns (body, error). 429 contended → wait Retry-After once; 502/504 → retry once (D42)."""
+    def _log(self, msg: str) -> None:
+        print(msg, file=sys.stderr, flush=True)
+        if self._log_path:
+            with self._log_path.open("a", encoding="utf-8") as f:
+                f.write(msg + "\n")
+
+    def _query(self, h: Hypothesis, client_request_id: str, user_id: str,
+               max_rows: int) -> tuple[dict[str, Any], str | None, str]:
+        """Returns (body, error, server request_id). 429 contended → wait Retry-After once; 502/504 → retry once
+        (D42)."""
         payload = {"title": h.name, "hypothesis": h.text, "include_results": True, "max_rows": max_rows}
         retried_contended = retried_upstream = False
         while True:
-            r = self._http.post("/v1/queries", json=payload, headers={"X-User-Id": user_id}, timeout=QUERY_TIMEOUT_S)
+            headers = {"X-User-Id": user_id, "X-Request-Id": client_request_id}
+            r = self._http.post("/v1/queries", json=payload, headers=headers, timeout=QUERY_TIMEOUT_S)
             body: dict[str, Any] = r.json()
+            request_id = r.headers.get("x-request-id") or body.get("request_id") or "–"
             if r.status_code == 200:
-                return body, None
+                return body, None, request_id
             code = (body.get("error") or {}).get("code", "UNKNOWN")
             if r.status_code == 429 and code == "CREDITS_EXHAUSTED":
                 raise _CreditsExhausted
@@ -133,10 +147,10 @@ class LiveRunner:
                 continue
             if r.status_code in (502, 504) and not retried_upstream:
                 retried_upstream = True
-                _log(f"#{h.id}: HTTP {r.status_code} {code}, retrying once")
+                self._log(f"#{h.id}: HTTP {r.status_code} {code} (request_id={request_id}), retrying once")
                 self._sleep(UPSTREAM_RETRY_WAIT_S)
                 continue
-            return body, f"HTTP {r.status_code} {code}"
+            return body, f"HTTP {r.status_code} {code}", request_id
 
     def _account(self, user_id: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         try:
