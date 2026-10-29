@@ -16,8 +16,13 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestContextMiddleware
 from app.db.engine import Database
+from app.modules.harness.credit_guard import UnmeteredCreditGuard
+from app.modules.harness.pipeline import GenerationHarness
 from app.modules.llm.factory import build_gateway
+from app.modules.llm.prompt_registry import FilePromptRegistry
 from app.modules.llm.types import LLMGateway
+from app.modules.queries.controller import router as queries_router
+from app.modules.queries.service import QueryService
 from app.modules.query_engine.executor import DuckDBExecutor
 from app.modules.query_engine.schema_card import render_schema_card
 from app.modules.query_engine.value_check import ValueChecker
@@ -41,6 +46,11 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        try:
+            prompts = FilePromptRegistry().get(settings.prompt_version)
+        except RuntimeError as exc:
+            log.critical("startup_prompts_failed", prompt_version=settings.prompt_version, error=str(exc))
+            raise
         try:
             executor = DuckDBExecutor(settings.duckdb_path, threads=settings.duckdb_threads,
                                       memory_limit=settings.duckdb_memory_limit, timeout_s=settings.query_timeout_s)
@@ -71,8 +81,13 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
         app.state.schema_card = schema_card
         app.state.schema_card_text = render_schema_card(schema_card)
         app.state.value_checker = ValueChecker(schema_card, executor)
+        harness = GenerationHarness(settings=settings, prompts=prompts, schema_card_text=app.state.schema_card_text,
+                                    llm=gateway, executor=executor, value_checker=app.state.value_checker)
+        # Credits are metered per LLM attempt through this factory; P1 swaps in the Postgres-backed guard.
+        app.state.query_service = QueryService(harness=harness, settings=settings,
+                                               guard_factory=lambda user_id, request_id: UnmeteredCreditGuard())
         log.info("startup_complete", llm_provider=gateway.provider, model=gateway.model,
-                 prompt_version=settings.prompt_version, dataset_rows=schema_card["row_count"])
+                 prompt_version=prompts.version, prompt_hash=prompts.hash, dataset_rows=schema_card["row_count"])
         try:
             yield
         finally:
@@ -85,6 +100,7 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(RequestContextMiddleware)
     register_error_handlers(app)
+    app.include_router(queries_router)
 
     @app.get("/healthz", tags=["ops"])
     async def healthz(request: Request, db: Annotated[Database, Depends(get_db)]) -> JSONResponse:
