@@ -1,0 +1,34 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# data (large / generated)
+data/*
+!data/.gitkeep
+*.csv
+*.duckdb
+*.duckdb.wal
+
+# assignment brief (not ours to publish)
+*.pdf
+
+# evaluation scratch runs (official runs are force-added)
+runs/*
+!runs/.gitkeep
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,57 @@
+[
+  {
+    "id": "1",
+    "name": "Sign-in Failures (Brute Force/Bot Attacks)",
+    "hypothesis": "CloudTrail logs contain failed console login attempts that could indicate brute force or bot attacks"
+  },
+  {
+    "id": "2",
+    "name": "Root Access Through Console",
+    "hypothesis": "Root user console login attempts can be identified in CloudTrail logs"
+  },
+  {
+    "id": "3",
+    "name": "CloudTrail Disruption",
+    "hypothesis": "Adversaries may attempt to disrupt CloudTrail logging to evade defenses"
+  },
+  {
+    "id": "4",
+    "name": "Unauthorized API Calls",
+    "hypothesis": "Unauthorized API calls (AccessDenied or UnauthorizedOperation errors) can reveal application errors or malicious activity"
+  },
+  {
+    "id": "5",
+    "name": "Whoami Reconnaissance",
+    "hypothesis": "Attackers use GetCallerIdentity API calls (similar to Unix 'whoami' command) to identify which AWS account they're using"
+  },
+  {
+    "id": "6",
+    "name": "Secrets Manager Access",
+    "hypothesis": "Adversaries may attempt to retrieve secrets (certificates, credentials, sensitive data) from AWS Secrets Manager"
+  },
+  {
+    "id": "7",
+    "name": "Large EC2 Instance Creation",
+    "hypothesis": "Attackers may attempt to launch extra-large EC2 instances (10xlarge or bigger) for cryptomining or other resource-intensive activities"
+  },
+  {
+    "id": "8",
+    "name": "S3 Bucket Brute Force",
+    "hypothesis": "Attackers may brute force S3 bucket names by attempting GetBucketAcl requests"
+  },
+  {
+    "id": "9a",
+    "name": "Suspicious User Agents",
+    "hypothesis": "CloudTrail logs contain requests from suspicious user agents (containing 'kali', 'parrot', or 'powershell') indicating potential attacker tools"
+  },
+  {
+    "id": "9b",
+    "name": "Suspicious User Agents",
+    "hypothesis": "CloudTrail logs contain requests from suspicious user agents (containing 'command/*')"
+  },
+  {
+    "id": "10",
+    "name": "Permanent Key Creation",
+    "hypothesis": "CreateAccessKey events from IAM users (not roles) can identify creation of long-term credentials"
+  }
+]
