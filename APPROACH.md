@@ -841,7 +841,17 @@ Iteration 1's raw responses are not kept (only its scores and report), to keep t
 - **Automated prompt improvement** from evaluation failures.
 - **Truncation feedback:** when a row-shaped result exceeds `MAX_RESULT_ROWS`, feed that back as a correction ("summarise with grouped counts") instead of returning a truncated list. It is generic and would fix #7's remaining gap; left out of P5 so the before/after compares prompt changes only.
 - **Relaxed scoring + diagnosis labels:** a second score that ignores extra columns and rolls finer or coarser groupings up to the answer key's keys, with automatic labels (`broader_filter`, `narrower_filter`, `different_grouping`, `wrong`).
-- **Ablation ladder:** four runs, each adding one change (self-correction → value check → prompt v2), to attribute the gain to each change.
+- **Ablation with repeated runs:** five configurations (A v1 bare · B v1 + self-correction · C v1 + self-correction +
+  value check · D v2 bare · E v2 full), 3 runs each with a fresh user, aggregated to mean and min/max per check and per
+  hypothesis. A→B, B→C, A→D and D→E each isolate one change; the repeats show run-to-run variance (the model is called
+  without a fixed temperature). A script starts one server per configuration on a spare port and refuses to run if
+  `/healthz` doesn't report the expected settings. Roughly 13 new runs, 2–2.5 hours on the free model.
+- **Held-out hypotheses:** 3–4 new ones the v2 rules were never tuned on, e.g. IAM privilege escalation
+  (`AttachUserPolicy`/`AttachRolePolicy`/`PutUserPolicy`/`CreatePolicyVersion`), snapshot sharing
+  (`ModifySnapshotAttribute`), security groups opened to the internet (`AuthorizeSecurityGroupIngress`), and EC2
+  credential harvesting (`GetPasswordData`/`CreateKeyPair`/`ImportKeyPair`, grouped counts). All exist in the data. The
+  answer key would be generated from reference SQL, committed and frozen before any run, and scored separately from the
+  official 11, so a before/after gap on it shows whether the rules generalise.
 - **LLM-blended confidence + calibration check:** combine the harness signals with the LLM's self-rating, and check in the report that high-confidence queries actually score higher.
 - **Agentic value lookup:** a `lookup_values(column, pattern)` tool the LLM can call before writing SQL, for long-tail values.
 - **`main.py --resume runs/<folder>`:** continue an incomplete run with the same user.

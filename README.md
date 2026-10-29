@@ -115,6 +115,10 @@ To reproduce the two official runs, start the API with these settings, then run 
 | before | `PROMPT_VERSION=v1 MAX_SELF_CORRECT=0 ZERO_ROW_VALUE_CHECK=false` |
 | after | `PROMPT_VERSION=v2 MAX_SELF_CORRECT=2 ZERO_ROW_VALUE_CHECK=true` (the defaults) |
 
+**Future scope** (APPROACH §18): an ablation across five configurations with 3 repeated runs each, to attribute the
+gain to the prompt, self-correction and the value check and to measure run-to-run variance; and a frozen held-out set
+of 3–4 new hypotheses (e.g. IAM privilege escalation, snapshot sharing) to show whether the v2 rules generalise.
+
 ## Tests
 ```bash
 make test          # starts Postgres, runs unit + integration tests (69) on the separate test database
