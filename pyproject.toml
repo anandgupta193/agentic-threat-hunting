@@ -55,4 +55,4 @@ plugins = ["pydantic.mypy"]
 strict_optional = true
 warn_unused_ignores = true
 ignore_missing_imports = true
-files = ["app"]
+files = ["app", "evaluation"]

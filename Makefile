@@ -36,5 +36,5 @@ fmt:           ## auto-fix lint issues
 prepare-data:  ## CSV -> data/cloudtrail.duckdb without Docker (P2)
 	$(PY) scripts/prepare_data.py
 
-eval:          ## run the evaluation against the running API (P4)
+eval:          ## run the evaluation against the running API (see python main.py --help)
 	$(PY) main.py

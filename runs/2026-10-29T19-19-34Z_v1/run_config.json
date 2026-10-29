@@ -1,0 +1,33 @@
+{
+  "label": "2026-10-29T19-19-34Z_v1",
+  "mode": "live",
+  "started_at": "2026-10-29T19:19:34.354975+00:00",
+  "api_base_url": "http://localhost:8000",
+  "user_id": "eval-20261029T191934Z",
+  "token_limit": 200000,
+  "llm_provider": "openrouter",
+  "model": "nvidia/nemotron-3.5-super-vl:free",
+  "prompt_version": "v1",
+  "prompt_hash": "9cd12dc42e98",
+  "max_self_correct": 0,
+  "zero_row_value_check": false,
+  "llm_effort": "medium",
+  "max_result_rows": 10000,
+  "dataset_sha256": "0a5d84b057ea88390033bb63bf05148fbbe94094dcc7537655b0ec4935c918df",
+  "dataset_rows": 1939207,
+  "hypothesis_ids": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9a",
+    "9b",
+    "10"
+  ],
+  "incomplete": false,
+  "finished_at": "2026-10-29T19:25:49.507969+00:00"
+}

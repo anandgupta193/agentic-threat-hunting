@@ -572,7 +572,7 @@ runs/2026-10-29T14-05-12Z_v1/
 - `NaN`/`NULL`/empty string all become one null value
 - strings are trimmed
 - column names are matched case-insensitively and alias-tolerantly (`user_agent` ↔ `userAgent`)
-- a count column is recognised by name (`count`, `cnt`, `n`, `*_count`)
+- a count column is recognised by name (`count`, `cnt`, `n`, `*_count`); failing that, the one remaining all-integer column is taken as the count (D47)
 
 **Metrics per hypothesis**
 | Metric | Meaning |
@@ -580,7 +580,7 @@ runs/2026-10-29T14-05-12Z_v1/
 | `executed` | The query ran without error |
 | `column_jaccard` | Overlap between expected and returned columns |
 | `row_precision / recall / f1` | Row outputs: matched on `eventID` where both sides have it, otherwise on the tuple of shared columns; rows are matched as a multiset |
-| `group_precision / recall / f1` | Aggregate outputs: matched on the group-key tuple |
+| `group_precision / recall / f1` | Aggregate outputs: matched on the group-key tuple, i.e. the expected non-count columns that the answer also returned. When the answer lacks some key columns, both sides are regrouped on the shared ones (counts summed); the missing columns already cost the columns check (D47) |
 | `count_exact_rate`, `count_mean_rel_error` | Aggregate outputs: accuracy of the counts for matched groups |
 | `tokens`, `latency_ms`, `attempts` | Cost and performance |
 
@@ -764,7 +764,7 @@ Prompt files live in `prompts/<version>/` (§8.1).
 ## 15. Iteration Log
 | Run folder | Prompt | Change | Composite | Notes |
 |---|---|---|---|---|
-| — | v1 | 'before': honest first attempt, no self-correction, no value check | — | — |
+| `runs/2026-10-29T19-19-34Z_v1` | v1 | 'before': honest first attempt, no self-correction, no value check | **0.503** | Ran 1.00 · columns 0.28 · rows/groups 0.49 · counts 0.00. Aggregate hypotheses (4, 5, 7, 8, 9a, 9b) came back as raw rows, so no counts and truncated at 10K rows; #1 returned 0 rows from a filter value that doesn't exist; 121,673 tokens over 11 calls |
 | — | v2 | 'after': generic rules from failure analysis + self-correction + value check | — | — |
 
 ## 16. Challenges & Solutions

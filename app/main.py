@@ -83,6 +83,13 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
         app.state.llm = gateway
         app.state.executor = executor
         app.state.schema_card = schema_card
+        # What /healthz reports, so an evaluation run can record the exact server configuration it measured.
+        app.state.harness_info = {
+            "prompt_version": prompts.version, "prompt_hash": prompts.hash,
+            "max_self_correct": settings.max_self_correct, "zero_row_value_check": settings.zero_row_value_check,
+            "llm_effort": settings.llm_effort, "max_result_rows": settings.max_result_rows,
+            "dataset_sha256": executor.meta().get("csv_sha256"), "dataset_rows": schema_card["row_count"],
+        }
         app.state.schema_card_text = render_schema_card(schema_card)
         app.state.value_checker = ValueChecker(schema_card, executor)
         harness = GenerationHarness(settings=settings, prompts=prompts, schema_card_text=app.state.schema_card_text,
@@ -120,6 +127,7 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
         return JSONResponse(status_code=200 if ok else 503, content={
             "status": "ok" if ok else "degraded", "checks": checks,
             "llm": {"provider": llm.provider, "model": llm.model},
+            "harness": request.app.state.harness_info,
         })
 
     return app
