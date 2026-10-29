@@ -120,7 +120,7 @@ The full log, with alternatives considered and superseded choices, is in [`DECIS
 | SQL safety | Allowlist validator + locked-down DuckDB (read-only, no external access, configuration locked) (D41) | Defence in depth around untrusted LLM-written SQL |
 | Query quality | Static schema card with real values + a zero-row value check that triggers self-correction (D33) | Catches value traps such as `UnauthorizedOperation` vs `Client.UnauthorizedOperation` without extra tool calls |
 | Confidence | Computed deterministically by the harness from objective signals, with reasons (D34) | Explainable and repeatable; LLM self-ratings are poorly calibrated |
-| LLM | Claude Sonnet 5.5 with schema-constrained structured output and a fixed effort level; prompts as versioned files; provider switch: Anthropic API or local Claude Code CLI (D6, D27, D44) | Strong SQL generation; guaranteed explanation fields; runs with an API key or a Claude subscription |
+| LLM | Claude Sonnet 5.5 with schema-constrained structured output and a fixed effort level; prompts as versioned files; provider switch: Anthropic API, OpenRouter, or local Claude Code CLI (D6, D27, D44) | Strong SQL generation; guaranteed explanation fields; runs with an API key or a Claude subscription |
 | Overspend | Let the call finish, block the next; in-flight claim at admission (D4) | Concurrent calls can't both spend the last credits; overshoot ≤ one call |
 | Windows | Fixed UTC blocks; a call counts in the window it was admitted in (D10, D11) | Exact 00/06/12/18 boundaries; no split accounting |
 | Retries | Every self-correction attempt is metered and re-admitted (D12) | Every LLM call spends credits, as the brief requires |
@@ -166,7 +166,7 @@ app/
     credits/      controller.py  service.py  repository.py  dtos.py  models.py (TokenUsage)  policy.py (pure rules, §7)
     queries/      controller.py  service.py  repository.py  dtos.py  models.py (QueryRequest)
     harness/      pipeline.py  stages.py  trace.py  confidence.py   (§8)
-    llm/          types.py (LLMGateway protocol)  anthropic_gateway.py  claude_code_gateway.py  fake_gateway.py  factory.py  prompt_registry.py
+    llm/          types.py (LLMGateway protocol)  anthropic_gateway.py  openrouter_gateway.py  claude_code_gateway.py  fake_gateway.py  factory.py  prompt_registry.py
     query_engine/ schema_card.py  validator.py  allowlist.py  executor.py  value_check.py
 evaluation/
   runner.py  scorer.py  normalizers.py  metrics.py  report.py  loaders.py (wraps utils.py)
@@ -657,7 +657,9 @@ Together with the API's `result_summary` (what was found), this covers the brief
   ```
   ANTHROPIC_API_KEY=
   LLM_MODEL=claude-sonnet-5-5
-  LLM_PROVIDER=anthropic          # or claude_code: local Claude Code CLI on your subscription (dev only, D44)
+  LLM_PROVIDER=anthropic          # anthropic | openrouter | claude_code (local CLI on your subscription, dev only) (D44)
+  OPENROUTER_API_KEY=             # when LLM_PROVIDER=openrouter
+  OPENROUTER_MODEL=anthropic/claude-sonnet-5.5
   LLM_EFFORT=medium               # sampling params (temperature) are not supported by the model
   LLM_MAX_TOKENS=8000             # includes thinking tokens
   LLM_TIMEOUT_S=90

@@ -51,5 +51,5 @@ async def main(provider: str | None) -> int:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--provider", choices=["anthropic", "claude_code"])
+    parser.add_argument("--provider", choices=["anthropic", "openrouter", "claude_code"])
     sys.exit(asyncio.run(main(parser.parse_args().provider)))

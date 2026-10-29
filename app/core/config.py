@@ -12,14 +12,17 @@ from sqlalchemy.engine import URL
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # LLM. Provider "anthropic" = API key (default, for evaluators);
-    # "claude_code" = local Claude Code CLI on the developer's subscription.
-    llm_provider: Literal["anthropic", "claude_code"] = "anthropic"
+    # LLM. "anthropic" = Anthropic API key (default, for evaluators); "openrouter" = OpenRouter API key;
+    # "claude_code" = local Claude Code CLI on the developer's subscription (dev only).
+    llm_provider: Literal["anthropic", "openrouter", "claude_code"] = "anthropic"
     anthropic_api_key: SecretStr = SecretStr("")
     llm_model: str = "claude-sonnet-5-5"
     llm_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
     llm_max_tokens: int = Field(8000, gt=0)
     llm_timeout_s: float = Field(90.0, gt=0)
+    openrouter_api_key: SecretStr = SecretStr("")
+    openrouter_model: str = "anthropic/claude-sonnet-5.5"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
     claude_cli_path: str = "claude"
     claude_cli_max_concurrency: int = Field(2, gt=0)
     prompt_version: str = "v2"

@@ -10,6 +10,8 @@ MAX_TEXT_LOG_CHARS = 200
 
 def configure_logging(level: str = "INFO") -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level, force=True)
+    for noisy in ("httpx", "httpcore"):  # per-request lines duplicate our own structured logs
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
