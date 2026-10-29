@@ -757,9 +757,22 @@ Tests use pytest + pytest-asyncio, a `FakeGateway` (scripted responses with toke
 ---
 
 ## 14. Prompting Strategy
-Prompt files live in `prompts/<version>/` (§8.1).
+Prompt files live in `prompts/<version>/` (§8.1); Python never contains prompt text.
 
-*To be filled during P3–P5:* system prompt structure, schema card format (§8.2), tool schema, and few-shot policy (generic examples only, never the hypotheses). Confidence is computed by the harness, not prompted (§8.4).
+| File | Content |
+|---|---|
+| `system.md` | Role (threat-hunting analyst writing DuckDB SQL), SQL rules (one SELECT, only `cloudtrail`, text columns, exact values, `CAST(eventTime AS TIMESTAMP)`), v2's shape and scope rules (§15), the output fields, then `{schema_card}` |
+| `user_template.md` | `{title}` + `{hypothesis}` only; no hypothesis id, so nothing can key off the answer key (D32) |
+| `retry_template.md` | The hypothesis again, the previous SQL and the problem, with "keep what was right; fix only what the problem requires" |
+
+- **One cached system prompt.** The schema card sits inside `system.md`, so the system prompt is identical for every call and every user and is sent with a cache marker (Anthropic `cache_control`; the same on OpenRouter). Only the short user or retry message changes.
+- **Schema card (D33, D45):** per column, its full value list when it has ≤ 200 distinct values (e.g. all 103 `errorCode` values), the most frequent 30 otherwise, 3 examples for opaque IDs, and the `eventTime` range. Values are listed without counts. This is what lets the model write `Client.UnauthorizedOperation` rather than the hypothesis' `UnauthorizedOperation`, at about 9.6K input tokens per call.
+- **Structured output, not free text (D6):** every call carries a strict JSON schema (`interpretation`, `reasoning`, `assumptions`, `sql`, `output_kind`), enforced by the provider's structured-output mode and validated again with Pydantic. Malformed output is a correctable failure.
+- **Deterministic feedback:** retry messages come from the validator (e.g. "Unknown table `events`"), DuckDB's error, the timeout, or the value check ("value 'command/%' not found in userAgent; closest values: …"), never from another LLM call.
+- **No few-shot examples.** Examples drawn from the 11 hypotheses would leak the answer key, and invented ones would steer the shape of every answer. v2 uses short generic rules instead, each traced to a failure pattern (§15).
+- **Sampling:** `effort: medium`; temperature is not set (Sonnet 5.5 rejects it, D6).
+- **Confidence is not prompted.** The harness computes it from objective signals (§8.4).
+- **Versioning:** the registry checks every placeholder at startup and hashes the files (12 hex chars). The hash appears in every response, every `query_requests` row and every run folder, so a score always maps to exact prompt text.
 
 ## 15. Iteration Log
 All runs use the same model (`nvidia/nemotron-3.5-super-vl:free` via OpenRouter, D44), the same dataset hash and a fresh user with the brief's 200K limit. Scores are the strict composite (§9.5), re-scored with the final scoring code (D49).
@@ -794,6 +807,13 @@ Iteration 1's raw responses are not kept (only its scores and report), to keep t
 - Hypothesis wording doesn't always match real values (`UnauthorizedOperation` vs `Client.UnauthorizedOperation`). Handled by the schema card's value lists and the zero-row value check (§8.2).
 - `enable_external_access=false` would block reading Parquet files at query time, so the data is stored as a native DuckDB file instead (§8.3).
 - The CSV has 1,939,214 lines but 1,939,207 records: 7 quoted fields contain line breaks. DuckDB and Python's `csv` module agree record for record, and the answer-key indices line up with `rowid`.
+- **Tokens per call.** The first full schema card made one call 19.3K tokens, so a 200K window held only ~10 calls. Slimming the card (values without counts, examples for IDs) brought input to 9.6K and calls to 10–12K, measured on real calls; `MAX_CALL_TOKENS` was then set to 15,000 from those measurements (D37, D45).
+- **Model API changes.** Sonnet 5.5 rejects `temperature` and forced `tool_choice`, so generation uses structured outputs with `effort` (D6).
+- **No API key, only a subscription.** The gateway became an interface with three providers: Anthropic, OpenRouter and the local Claude Code CLI. The official runs used a free OpenRouter model because the available key had a $0 limit (D44).
+- **asyncpg and a comment-only `schema.sql`.** Running a script with no statements crashed asyncpg; startup now skips an empty schema file.
+- **Locks and foreign keys.** `FOR UPDATE` on the user row would also block the FK checks of concurrent audit inserts; `FOR NO KEY UPDATE` serialises admissions without that (D46).
+- **A scorer bug found by its own output.** The "single integer column is the count" fallback read `userIdentityaccountId` (all digits) as a count on raw-event answers. Fixed so dataset columns never qualify, and all runs re-scored from their saved responses (D49).
+- **Shape is the model's hardest choice.** The same wording ("brute force", "launch") reads as events to one prompt and as counts to another, and the free model flips between runs. Two prompt iterations fixed most cases; the rest are explained rather than fitted (D50).
 
 ## 17. Limitations
 - `X-User-Id` is identification only; production would need real authentication.
@@ -803,7 +823,9 @@ Iteration 1's raw responses are not kept (only its scores and report), to keep t
 - A timed-out LLM call is recorded as 0 tokens even though the provider may have billed it.
 - `MAX_CALL_TOKENS` is static; if prompts grow past it, concurrent calls near the limit can overshoot by more than planned until it's updated.
 - Strict scoring penalises queries that are logically right but scoped or grouped differently from the answer key; the report explains these cases, but the score doesn't credit them.
-- With 2 official runs, the before/after gain can't be attributed to individual changes (prompt vs self-correction vs value check).
+- With 2 official runs, the before/after gain can't be attributed to individual changes (prompt vs self-correction vs value check). In the after run only one hypothesis needed a correction, so most of the gain is the prompt.
+- One run per configuration on a free model (D44): run-to-run variation of a few hundredths per hypothesis is expected, and the default production model (Sonnet 5.5) was not measured.
+- The v2 rules were derived from failures on the same 11 hypotheses they are scored on. They are generic by construction and checked for hypothesis-specific terms, but there is no held-out set.
 - Deterministic confidence reflects execution risk, not semantic correctness. A clean query can still answer the wrong question.
 
 ## 18. Future Scope
