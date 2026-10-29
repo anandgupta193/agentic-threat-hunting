@@ -14,18 +14,70 @@ window, with HTTP 429 and `Retry-After` when the budget runs out.
 
 **Result:** strict score **0.50 → 0.79** across 11 hypotheses (prompt v1 → v2, plus self-correction and value checks).
 
-## Quick start (Docker)
-Needs Docker and Python 3.12 (Python only for `main.py`).
+## Quick start
+**You need:** Docker (with Compose), Python 3.12 (only for the evaluation script `main.py`), and **one** LLM API key:
+Anthropic or OpenRouter.
 
+**1. Get the code and the dataset**
 ```bash
-# 1. Dataset: download nineteenFeaturesDf.csv into ./data/
-#    https://www.kaggle.com/datasets/nobukim/aws-cloudtrails-dataset-from-flaws-cloud
-cp .env.example .env          # 2. set ANTHROPIC_API_KEY (or LLM_PROVIDER=openrouter + OPENROUTER_API_KEY)
-make up                       # 3. Postgres → one-time CSV-to-DuckDB conversion → API on :8000
-make install && .venv/bin/python main.py   # 4. full evaluation over HTTP → runs/<timestamp>_<prompt>/
+git clone https://github.com/anandgupta193/agentic-threat-hunting.git && cd agentic-threat-hunting
 ```
+Download `nineteenFeaturesDf.csv` (about 1 GB) from
+[Kaggle](https://www.kaggle.com/datasets/nobukim/aws-cloudtrails-dataset-from-flaws-cloud) and put it in `./data/`, so
+the file is at `data/nineteenFeaturesDf.csv`.
 
-Then try it:
+**2. Create `.env` and add your key**
+```bash
+cp .env.example .env
+```
+Open `.env` and set **two lines**. That's the minimum; everything else has a working default.
+
+| Use | Set in `.env` | Get a key |
+|---|---|---|
+| **Anthropic API** | `LLM_PROVIDER=anthropic`<br>`ANTHROPIC_API_KEY=sk-ant-...` | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) |
+| **OpenRouter** | `LLM_PROVIDER=openrouter`<br>`OPENROUTER_API_KEY=sk-or-...` | [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys) |
+
+- **Model on OpenRouter:** the default is `anthropic/claude-sonnet-5.5`, which needs OpenRouter credits.
+- **No credits:** also set `OPENROUTER_MODEL=nvidia/nemotron-3.5-super-vl:free`, the free model the official runs used.
+- **Port conflicts:** if port 5433 or 8000 is taken, change `POSTGRES_PORT` or `API_PORT`.
+
+**3. Start everything**
+```bash
+make up        # = docker compose up -d --build
+```
+This starts three services in order:
+1. Postgres.
+2. A one-time job that converts the CSV to `data/cloudtrail.duckdb` (about 15 s; skipped on later starts).
+3. The API on port 8000.
+
+If something fails, `make logs` shows the API output.
+
+**4. Check that it's up**
+```bash
+curl localhost:8000/healthz      # "status": "ok", plus the LLM provider and model
+```
+Interactive API docs: http://localhost:8000/docs
+
+**5. Run the evaluation**
+```bash
+make install                     # creates .venv (once)
+.venv/bin/python main.py         # all 11 hypotheses over HTTP → runs/<timestamp>_<prompt>/
+```
+A full run uses about 140K tokens, under one user's 200K budget, and takes a few minutes. To try it on a subset first,
+run `.venv/bin/python main.py --only 2,6`.
+
+**Stop:** `make down` stops the containers and keeps the data. `docker compose down -v` also deletes the credit
+database.
+
+**Common problems**
+| Symptom | Fix |
+|---|---|
+| API exits with `needs ANTHROPIC_API_KEY` / `needs OPENROUTER_API_KEY` | The key for the chosen `LLM_PROVIDER` is empty in `.env` |
+| `data-prep` fails: dataset not found | Put `nineteenFeaturesDf.csv` in `./data/` |
+| `port is already allocated` | Change `POSTGRES_PORT` or `API_PORT` in `.env` (with a new `API_PORT`, also set `API_BASE_URL` for `main.py`) |
+| OpenRouter 402 / 502 errors | No credits for the paid model; use the free `OPENROUTER_MODEL` above |
+
+### Try the API by hand
 ```bash
 curl -X POST localhost:8000/v1/users -H 'Content-Type: application/json' -d '{"user_id":"analyst-1"}'
 curl -X POST localhost:8000/v1/queries -H 'Content-Type: application/json' -H 'X-User-Id: analyst-1' \
