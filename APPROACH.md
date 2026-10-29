@@ -563,6 +563,22 @@ checked by grep.
 
   The answer key would come from reference SQL, be committed and frozen before any run, and be scored separately from
   the official 11.
+- **Close the billing leaks:**
+  - **Retry `finalize()`:** if the DB write after an LLM call fails, the call stays `pending` and expires unbilled.
+    Retry it a few times with backoff, then log the actual tokens so they can be reconciled.
+  - **Bill an estimate when a claim expires:** an expired `pending` row is billed as 0 tokens today. Bill
+    `MAX_CALL_TOKENS` instead, or the provider-reported usage when it's known, so a crashed or timed-out call can't
+    be free.
+- **Harden the API:**
+  - **Protect `POST /v1/users`:** require an admin key for creating users or setting `token_limit`, and lower the
+    `MAX_TOKEN_LIMIT` ceiling. Today anyone can create a user with a large limit.
+  - **An `Idempotency-Key` on `POST /v1/queries`:** a retried request returns the stored result instead of running,
+    and billing, the LLM again.
+  - **`resets_at` on the contended 429:** `CREDITS_CONTENDED` currently gives only a short `Retry-After`. Add
+    `resets_at` and `tokens_remaining` to its details, as the exhausted 429 has.
+  - **LLM retry with backoff in every gateway:** retry 429 / 5xx / timeouts with jittered exponential backoff
+    (honouring the provider's `Retry-After`) before returning a 502 / 504. Retries stay inside the one admitted
+    call, which is billed for the tokens the provider reports.
 - **Langfuse:** prompt versions and labels behind the same `PromptRegistry` interface, plus traces of every LLM call
   for cost and latency dashboards. Postgres stays the only authority for credits.
 - **Scale-out and operations:**
