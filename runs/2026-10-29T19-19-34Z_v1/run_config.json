@@ -1,6 +1,6 @@
 {
   "label": "2026-10-29T19-19-34Z_v1",
-  "mode": "live",
+  "mode": "replay",
   "started_at": "2026-10-29T19:19:34.354975+00:00",
   "api_base_url": "http://localhost:8000",
   "user_id": "eval-20261029T191934Z",
@@ -29,5 +29,7 @@
     "10"
   ],
   "incomplete": false,
-  "finished_at": "2026-10-29T19:25:49.507969+00:00"
+  "finished_at": "2026-10-29T19:25:49.507969+00:00",
+  "source_run": "2026-10-29T19-19-34Z_v1",
+  "replayed_at": "2026-10-29T19:44:21.340483+00:00"
 }

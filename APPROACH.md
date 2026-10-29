@@ -762,10 +762,31 @@ Prompt files live in `prompts/<version>/` (§8.1).
 *To be filled during P3–P5:* system prompt structure, schema card format (§8.2), tool schema, and few-shot policy (generic examples only, never the hypotheses). Confidence is computed by the harness, not prompted (§8.4).
 
 ## 15. Iteration Log
-| Run folder | Prompt | Change | Composite | Notes |
-|---|---|---|---|---|
-| `runs/2026-10-29T19-19-34Z_v1` | v1 | 'before': honest first attempt, no self-correction, no value check | **0.503** | Ran 1.00 · columns 0.28 · rows/groups 0.49 · counts 0.00. Aggregate hypotheses (4, 5, 7, 8, 9a, 9b) came back as raw rows, so no counts and truncated at 10K rows; #1 returned 0 rows from a filter value that doesn't exist; 121,673 tokens over 11 calls |
-| — | v2 | 'after': generic rules from failure analysis + self-correction + value check | — | — |
+All runs use the same model (`nvidia/nemotron-3.5-super-vl:free` via OpenRouter, D44), the same dataset hash and a fresh user with the brief's 200K limit. Scores are the strict composite (§9.5), re-scored with the final scoring code (D49).
+
+| Run folder | Prompt (hash) | Harness | Composite | Ran · Columns · Rows/Groups · Counts | Tokens (calls) |
+|---|---|---|---|---|---|
+| `runs/2026-10-29T19-19-34Z_v1` | v1 (`9cd12dc42e98`) | no self-correction, no value check | **0.501** | 1.00 · 0.26 · 0.49 · 0.00 | 121,673 (11) |
+| `runs/2026-10-29T19-33-48Z_v2` | v2 iteration 1 (`1761c0325962`) | self-correction 2, value check on | 0.715 | 1.00 · 0.49 · 0.75 · 0.36 | 135,114 (12) |
+| `runs/2026-10-29T19-39-48Z_v2` | **v2 final** (`a63b974ab7b1`) | self-correction 2, value check on | **0.794** | 1.00 · 0.58 · 0.82 · 0.67 | 139,770 (12) |
+
+Iteration 1's raw responses are not kept (only its scores and report), to keep the repository small; the two official runs keep everything and replay exactly.
+
+**Failure analysis of v1 → rules added in v2.** Every rule is generic (D29): it names no hypothesis and no answer-key value (checked by grep against all hypothesis-specific terms).
+
+| v1 failure (hypotheses) | Rule added in v2 | Why it is generic |
+|---|---|---|
+| "Who / how often / with what" hypotheses came back as raw events, so no counts, and truncated at 10K rows (4, 5, 7, 8, 9a, 9b) | **Choose the output shape:** events for one specific rare action; grouped counts for who/how-often/with-what questions or a property many events share | The same question decides the shape for any hypothesis; a raw list of thousands of events is unusable for any analyst |
+| Grouped answers carried extra metrics (first/last seen, distinct counts, lists) and extra group columns (1, 4, 8) | Group by the actor + the attributes the hypothesis names (+ IP and user agent only for how/where an actor connects); select only those plus `COUNT(*) AS count` | A fixed aggregate shape is easier to read and compare |
+| Row answers returned an arbitrary subset of columns (2, 3, 6, 10) | Events are returned complete (`SELECT *`) | An analyst pivots on any field of a matching event |
+| Filters broadened to related actions such as create/describe/list (3, 6) | Match only the actions that perform the behaviour; leave out read/list/describe unless asked (neutral example: security-group tampering) | Holds for any action-based hypothesis |
+| Extra values beyond those the hypothesis named (4) | Use exactly the named values; if one is not in the data as written, use the listed value that contains it | Holds for any hypothesis that names values |
+| Invented thresholds and caps (`HAVING COUNT(*) >= 5`, `LIMIT 100`) (1, 8) | No thresholds, LIMITs or time windows the hypothesis does not state | Unstated cut-offs silently drop findings |
+| 0 rows: failures filtered on `errorCode`, but failed console sign-ins only set `errorMessage` (1) | A failed call has `errorCode` or `errorMessage` set; console sign-in failures carry only `errorMessage` | A fact about the dataset, true for any hypothesis about failures |
+
+**Iteration 1 → final:** iteration 1 still returned events for hypotheses selected by a shared property (instance size, user-agent pattern) and added unrequested group columns, so the shape rule was sharpened ("a property that many events share", "add no other group columns"). Rules tried and dropped: translating a quoted `*` into an anchored `LIKE` pattern (it returns 0 rows on this data and helps no hypothesis).
+
+**Why iteration stopped here.** The remaining gaps are either answer-key scoping (1, 4, 8, 9b; explained per hypothesis in `report.md` from `evaluation/notes.json`, D35) or the model's shape choice for #7 (events, then truncated at 10K rows). Further prompt rules aimed at those would be fitting the answer key (D29). A generic harness fix for #7 is listed in §18.
 
 ## 16. Challenges & Solutions
 - An initial dataset copy (`dec12_18features.csv`) was coarsened and could not match the answer key. Spotted by comparing rows by index; switched to `nineteenFeaturesDf.csv` (§2, D7).
@@ -796,6 +817,7 @@ Prompt files live in `prompts/<version>/` (§8.1).
   - **Evaluation tracking:** evaluation runs are pushed as Langfuse datasets and scores, so prompt versions can be compared in its UI.
   - **Postgres stays the source of truth for credits.** Langfuse is for observability only and is never used to enforce limits.
 - **Automated prompt improvement** from evaluation failures.
+- **Truncation feedback:** when a row-shaped result exceeds `MAX_RESULT_ROWS`, feed that back as a correction ("summarise with grouped counts") instead of returning a truncated list. It is generic and would fix #7's remaining gap; left out of P5 so the before/after compares prompt changes only.
 - **Relaxed scoring + diagnosis labels:** a second score that ignores extra columns and rolls finer or coarser groupings up to the answer key's keys, with automatic labels (`broader_filter`, `narrower_filter`, `different_grouping`, `wrong`).
 - **Ablation ladder:** four runs, each adding one change (self-correction → value check → prompt v2), to attribute the gain to each change.
 - **LLM-blended confidence + calibration check:** combine the harness signals with the LLM's self-rating, and check in the report that high-confidence queries actually score higher.

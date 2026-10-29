@@ -9,7 +9,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Literal
 
-from evaluation.normalizers import Table, match_columns, norm_count
+from app.modules.query_engine.dataset import COLUMNS
+from evaluation.normalizers import Table, match_columns, norm_count, norm_name
 
 Key = tuple[str | None, ...]
 EXAMPLES = 3
@@ -117,8 +118,11 @@ def _groups(table: Table, columns: list[str], count_col: str | None) -> dict[Key
 
 
 def _numeric_fallback(returned: Table, used: set[str]) -> str | None:
-    """If the count column has an unrecognised name, accept the one remaining all-integer column."""
-    candidates = [c for i, c in enumerate(returned.columns) if c not in used and returned.rows
+    """If the count column has an unrecognised name, accept the one remaining all-integer computed column.
+    Dataset columns never qualify: an all-digit ID such as `userIdentityaccountId` is not a count."""
+    raw = {norm_name(c) for c in COLUMNS}
+    candidates = [c for i, c in enumerate(returned.columns)
+                  if c not in used and norm_name(c) not in raw and returned.rows
                   and all(norm_count(r[i]) is not None for r in returned.rows if r[i] is not None)]
     return candidates[0] if len(candidates) == 1 else None
 

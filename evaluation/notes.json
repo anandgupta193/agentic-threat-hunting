@@ -1,0 +1,7 @@
+{
+  "_about": "Engineer notes (D35): where a gap comes from the answer key scoping a hypothesis more narrowly than its wording, not from a query error. Shown in report.md; never used for scoring or prompting (D29). Every figure was checked against data/cloudtrail.duckdb.",
+  "1": "The answer key keeps only the 12 failed ConsoleLogin events. The data has 26 failed console sign-ins: 12 ConsoleLogin plus 14 CheckMfa with the same 'No username found in supplied account' message, which a hunter would also want. The hypothesis' 'brute force' wording also invites grouped counts, while the key lists events.",
+  "4": "The hypothesis names AccessDenied and UnauthorizedOperation. With the real value Client.UnauthorizedOperation there are 2,679 (eventName, userIdentityarn) groups; the key has 2,387, close to AccessDenied alone (2,411), so some groups and counts cannot match.",
+  "8": "The answer key keeps only failed GetBucketAcl requests (AccessDenied, NoSuchBucket): 212 of the 350 (actor, IP, user agent, error code) groups. The hypothesis covers all attempts, so successful ones count as extra.",
+  "9b": "The answer key's userAgent values are the 'command/...' substring extracted from longer user-agent strings. No userAgent in the data starts with 'command/', so no query over the raw column can reproduce these groups."
+}
