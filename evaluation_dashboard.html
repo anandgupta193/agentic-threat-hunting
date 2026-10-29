@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Query Generator Evaluation</title>
+<style>
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --text: #16191d; --muted: #5d6673; --line: #e3e6ea;
+  --before: #b7bec8; --after: #2f6fde; --good: #1a7f4b; --good-bg: #e3f4ea; --bad: #b3261e; --bad-bg: #fbe7e5;
+  --flat: #5d6673; --flat-bg: #eef0f3; --note-bg: #fff7e0; --note-line: #e6c460; --code-bg: #f2f4f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111317; --surface: #1a1d22; --text: #e8eaed; --muted: #9aa3ae; --line: #2c3037;
+    --before: #4a515c; --after: #6b9bff; --good: #5fd08f; --good-bg: #173325; --bad: #ff8a80; --bad-bg: #3a1c1a;
+    --flat: #9aa3ae; --flat-bg: #24282e; --note-bg: #2e2a1a; --note-line: #8a7430; --code-bg: #14171b;
+  }
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 40px 0 12px; }
+.sub { color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.hero { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; margin-top: 24px;
+  text-align: center; }
+.hero .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.hero .big { font-size: 56px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hero .before .big { color: var(--muted); }
+.hero .after .big { color: var(--after); }
+.hero .meta { color: var(--muted); font-size: 13px; }
+.hero > div { min-width: 0; }
+.arrow { font-size: 28px; color: var(--muted); }
+.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+.chip.up { color: var(--good); background: var(--good-bg); }
+.chip.down { color: var(--bad); background: var(--bad-bg); }
+.chip.flat { color: var(--flat); background: var(--flat-bg); }
+.checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
+.check h3 { margin: 0; font-size: 15px; }
+.check p { margin: 2px 0 12px; color: var(--muted); font-size: 13px; }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 8px; font-size: 12px;
+  color: var(--muted); font-variant-numeric: tabular-nums; }
+.track { height: 8px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; border-radius: 4px; }
+.fill.b { background: var(--before); } .fill.a { background: var(--after); }
+.legend { display: flex; gap: 16px; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+details.h { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; }
+details.h > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 64px; gap: 16px; align-items: center; }
+details.h > summary::-webkit-details-marker { display: none; }
+details.h[open] > summary { border-bottom: 1px solid var(--line); }
+.hname { font-weight: 600; }
+.hname small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.body { padding: 16px; display: grid; gap: 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(110px, 100%), 1fr)); gap: 8px; }
+.stat { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; }
+pre { margin: 0; background: var(--code-bg); border-radius: 8px; padding: 12px; overflow-x: auto;
+  font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+.note { background: var(--note-bg); border-left: 3px solid var(--note-line); border-radius: 6px; padding: 10px 12px;
+  font-size: 14px; }
+.small { color: var(--muted); font-size: 13px; }
+details.sql > summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 12px; }
+.how .card { padding: 14px 16px; }
+.how b { font-size: 20px; }
+footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+@media (max-width: 640px) {
+  .hero { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); } .hero .big { font-size: 44px; }
+  details.h > summary { grid-template-columns: 1fr 64px; } details.h > summary .bars { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script id="data" type="application/json">{"before": {"run": {"label": "2026-10-29T19-19-34Z_v1", "source_run": "2026-10-29T19-19-34Z_v1", "prompt_version": "v1", "prompt_hash": "9cd12dc42e98", "model": "nvidia/nemotron-3.5-super-vl:free", "llm_provider": "openrouter", "max_self_correct": 0, "zero_row_value_check": false, "started_at": "2026-10-29T19:19:34.354975+00:00"}, "overall": {"score": 0.5011, "checks": {"ran": 1.0, "columns": 0.2648, "match": 0.4884, "counts": 0.0}, "hypotheses": 11, "scored": 11, "failed": 0, "errors": 0, "skipped": []}, "usage": {"calls": 11, "input_tokens": 105194, "output_tokens": 16479, "total_tokens": 121673}, "hypotheses": [{"id": "1", "name": "Sign-in Failures (Brute Force/Bot Attacks)", "status": "scored", "score": 0.2708, "checks": {"ran": 1.0, "columns": 0.08333333333333333, "match": 0.0, "counts": null}, "shape": "rows", "expected": 12, "returned": 0, "matched": 0, "missing": 12, "extra": 0, "truncated": false, "total_rows": 0, "sql": "WITH failed_console_logins AS (SELECT eventTime, sourceIPAddress, userAgent, userIdentitytype, userIdentityarn, userIdentityaccountId, errorCode, errorMessage, awsRegion FROM cloudtrail WHERE eventSource = 'signin.amazonaws.com' AND NOT errorCode IS NULL) SELECT sourceIPAddress, userAgent, COUNT(*) AS failed_login_count, MIN(CAST(eventTime AS TIMESTAMP)) AS first_attempt_time, MAX(CAST(eventTime AS TIMESTAMP)) AS last_attempt_time, COUNT(DISTINCT userIdentityarn) AS distinct_user_arns, COUNT(DISTINCT userIdentityaccountId) AS distinct_account_ids, LISTAGG(DISTINCT errorCode, ', ') AS observed_error_codes FROM failed_console_logins GROUP BY sourceIPAddress, userAgent HAVING COUNT(*) >= 5 ORDER BY failed_login_count DESC, sourceIPAddress", "confidence": 0.65, "result_summary": "0 rows", "attempts": 1, "tokens": 12169, "latency_ms": 58144, "error": null}, {"id": "2", "name": "Root Access Through Console", "status": "scored", "score": 0.8907, "checks": {"ran": 1.0, "columns": 0.5789473684210527, "match": 0.991869918699187, "counts": null}, "shape": "rows", "expected": 61, "returned": 62, "matched": 61, "missing": 0, "extra": 1, "truncated": false, "total_rows": 62, "sql": "WITH root_console AS (SELECT eventTime, eventName, eventSource, userIdentitytype, userIdentityarn, userIdentityaccountId, sourceIPAddress, userAgent, awsRegion, errorCode, errorMessage FROM cloudtrail WHERE (userIdentitytype = 'Root' OR userIdentityarn LIKE '%:root') AND (eventType = 'AwsConsoleSignIn' OR eventSource = 'signin.amazonaws.com' OR eventName ILIKE '%ConsoleLogin%')) SELECT * FROM root_console ORDER BY CAST(eventTime AS TIMESTAMP) DESC", "confidence": 0.85, "result_summary": "62 rows \u00b7 1 distinct eventName \u00b7 1 distinct eventSource \u00b7 1 distinct userIdentitytype \u00b7 eventTime 2017-02-18 \u2192 2020-10-07", "attempts": 1, "tokens": 10587, "latency_ms": 13477, "error": null}, {"id": "3", "name": "CloudTrail Disruption", "status": "scored", "score": 0.5379, "checks": {"ran": 1.0, "columns": 0.6, "match": 0.2758620689655173, "counts": null}, "shape": "rows", "expected": 4, "returned": 25, "matched": 4, "missing": 0, "extra": 21, "truncated": false, "total_rows": 25, "sql": "WITH cloudtrail_events AS (SELECT eventID, eventTime, userIdentityarn, eventSource, eventName, awsRegion, sourceIPAddress, errorCode, errorMessage FROM cloudtrail WHERE eventSource = 'cloudtrail.amazonaws.com' AND eventName IN ('StopLogging', 'DeleteTrail', 'UpdateTrail', 'CreateTrail', 'PutEventSelectors', 'DeleteEventSelectors')) SELECT eventTime, userIdentityarn, eventSource, eventName, awsRegion, sourceIPAddress, eventID, errorCode, errorMessage FROM cloudtrail_events ORDER BY eventTime DESC", "confidence": 0.9, "result_summary": "25 rows \u00b7 3 distinct userIdentityarn \u00b7 1 distinct eventSource \u00b7 4 distinct eventName \u00b7 eventTime 2017-02-12 \u2192 2019-08-23", "attempts": 1, "tokens": 10504, "latency_ms": 69664, "error": null}, {"id": "4", "name": "Unauthorized API Calls", "status": "scored", "score": 0.5131, "checks": {"ran": 1.0, "columns": 0.15384615384615385, "match": 0.7059428865448932, "counts": 0.0}, "shape": "aggregate", "expected": 2387, "returned": 1500, "matched": 1372, "missing": 1015, "extra": 128, "truncated": true, "total_rows": 473913, "sql": "WITH unauthorized_api_calls AS (SELECT eventID, eventTime, eventSource, eventName, awsRegion, sourceIPAddress, userAgent, userIdentityarn, userIdentityuserName, errorCode, errorMessage, requestID FROM cloudtrail WHERE errorCode IN ('AccessDenied', 'AccessDeniedException', 'Client.UnauthorizedOperation') AND NOT errorCode IS NULL) SELECT eventID, eventTime, eventSource, eventName, awsRegion, sourceIPAddress, userAgent, userIdentityarn, userIdentityuserName, errorCode, errorMessage, requestID FROM unauthorized_api_calls ORDER BY CAST(eventTime AS TIMESTAMP) DESC", "confidence": 0.8, "result_summary": "473,913 rows (first 10,000 shown; stats below cover those) \u00b7 115 distinct eventSource \u00b7 676 distinct eventName \u00b7 16 distinct awsRegion \u00b7 eventTime 2020-09-11 \u2192 2020-10-07", "attempts": 1, "tokens": 10583, "latency_ms": 58507, "error": null}, {"id": "5", "name": "Whoami Reconnaissance", "status": "scored", "score": 0.5306, "checks": {"ran": 1.0, "columns": 0.2, "match": 0.7265927607853613, "counts": 0.0}, "shape": "aggregate", "expected": 4767, "returned": 2720, "matched": 2720, "missing": 2047, "extra": 0, "truncated": true, "total_rows": 17128, "sql": "WITH whoami_events AS (SELECT eventTime, sourceIPAddress, userAgent, eventName, eventSource, awsRegion, userIdentitytype, userIdentityaccountId, userIdentityprincipalId, userIdentityarn, userIdentityaccessKeyId, userIdentityuserName, errorCode, errorMessage FROM cloudtrail WHERE eventName = 'GetCallerIdentity') SELECT * FROM whoami_events ORDER BY CAST(eventTime AS TIMESTAMP)", "confidence": 0.8, "result_summary": "17,128 rows (first 10,000 shown; stats below cover those) \u00b7 1,987 distinct sourceIPAddress \u00b7 1,967 distinct userAgent \u00b7 1 distinct eventName \u00b7 eventTime 2017-02-12 \u2192 2019-08-22", "attempts": 1, "tokens": 10602, "latency_ms": 8136, "error": null}, {"id": "6", "name": "Secrets Manager Access", "status": "scored", "score": 0.3972, "checks": {"ran": 1.0, "columns": 0.5789473684210527, "match": 0.005012531328320803, "counts": null}, "shape": "rows", "expected": 1, "returned": 398, "matched": 1, "missing": 0, "extra": 397, "truncated": false, "total_rows": 398, "sql": "WITH secrets_access AS (SELECT eventID, eventTime, eventSource, eventName, userIdentityarn, userIdentitytype, sourceIPAddress, userAgent, awsRegion, errorCode, errorMessage FROM cloudtrail WHERE eventSource = 'secretsmanager.amazonaws.com' AND (eventName LIKE '%GetSecretValue%' OR eventName LIKE '%DescribeSecret%' OR eventName LIKE '%ListSecrets%' OR eventName LIKE '%GetSecret%')) SELECT * FROM secrets_access ORDER BY CAST(eventTime AS TIMESTAMP) DESC", "confidence": 0.85, "result_summary": "398 rows \u00b7 389 distinct eventID \u00b7 1 distinct eventSource \u00b7 2 distinct eventName \u00b7 eventTime 2018-10-17 \u2192 2020-10-07", "attempts": 1, "tokens": 11345, "latency_ms": 12826, "error": null}, {"id": "7", "name": "Large EC2 Instance Creation", "status": "scored", "score": 0.5733, "checks": {"ran": 1.0, "columns": 0.07692307692307693, "match": 0.8947368421052632, "counts": 0.0}, "shape": "aggregate", "expected": 34, "returned": 42, "matched": 34, "missing": 0, "extra": 8, "truncated": true, "total_rows": 300622, "sql": "WITH filtered AS (SELECT eventID, eventTime, eventName, eventSource, awsRegion, sourceIPAddress, userIdentityarn, userIdentityuserName, userIdentityaccessKeyId, requestParametersinstanceType, errorCode, errorMessage, userAgent FROM cloudtrail WHERE eventName = 'RunInstances' AND (requestParametersinstanceType LIKE '%.10xlarge' OR requestParametersinstanceType LIKE '%.12xlarge' OR requestParametersinstanceType LIKE '%.16xlarge' OR requestParametersinstanceType LIKE '%.18xlarge' OR requestParametersinstanceType LIKE '%.24xlarge' OR requestParametersinstanceType LIKE '%.32xlarge' OR requestParametersinstanceType LIKE '%.metal')) SELECT eventID, eventTime, eventName, eventSource, awsRegion, sourceIPAddress, userIdentityarn, userIdentityuserName, requestParametersinstanceType, errorCode, errorMessage, userAgent FROM filtered ORDER BY CAST(eventTime AS TIMESTAMP) DESC", "confidence": 0.8, "result_summary": "300,622 rows (first 10,000 shown; stats below cover those) \u00b7 1 distinct eventName \u00b7 1 distinct eventSource \u00b7 16 distinct awsRegion \u00b7 eventTime 2019-08-23 \u2192 2020-09-20", "attempts": 1, "tokens": 12029, "latency_ms": 18026, "error": null}, {"id": "8", "name": "S3 Bucket Brute Force", "status": "scored", "score": 0.3769, "checks": {"ran": 1.0, "columns": 0.15384615384615385, "match": 0.3652173913043478, "counts": 0.0}, "shape": "aggregate", "expected": 163, "returned": 67, "matched": 42, "missing": 121, "extra": 25, "truncated": false, "total_rows": 100, "sql": "WITH s3_getbucketacl AS (SELECT eventTime, sourceIPAddress, userIdentityarn, userIdentityaccessKeyId, userIdentityuserName, awsRegion, errorCode, requestID FROM cloudtrail WHERE eventSource = 's3.amazonaws.com' AND eventName = 'GetBucketAcl') SELECT sourceIPAddress, userIdentityarn, userIdentityaccessKeyId, userIdentityuserName, awsRegion, COUNT(*) AS get_bucket_acl_attempts, COUNT(DISTINCT requestID) AS distinct_requests, MIN(CAST(eventTime AS TIMESTAMP)) AS first_seen, MAX(CAST(eventTime AS TIMESTAMP)) AS last_seen, ARRAY_AGG(DISTINCT errorCode) FILTER(WHERE NOT errorCode IS NULL) AS observed_error_codes FROM s3_getbucketacl GROUP BY sourceIPAddress, userIdentityarn, userIdentityaccessKeyId, userIdentityuserName, awsRegion ORDER BY get_bucket_acl_attempts DESC LIMIT 100", "confidence": 0.9, "result_summary": "100 rows \u00b7 61 distinct sourceIPAddress \u00b7 6 distinct userIdentityarn \u00b7 17 distinct userIdentityaccessKeyId", "attempts": 1, "tokens": 11422, "latency_ms": 42825, "error": null}, {"id": "9a", "name": "Suspicious User Agents", "status": "scored", "score": 0.3993, "checks": {"ran": 1.0, "columns": 0.18181818181818182, "match": 0.40739185216295676, "counts": 0.0}, "shape": "aggregate", "expected": 1896, "returned": 485, "matched": 485, "missing": 1411, "extra": 0, "truncated": true, "total_rows": 156930, "sql": "SELECT eventTime, sourceIPAddress, userAgent, eventName, eventSource, userIdentityarn, userIdentityuserName, userIdentityaccountId, errorCode, awsRegion FROM cloudtrail WHERE userAgent ILIKE '%kali%' OR userAgent ILIKE '%parrot%' OR userAgent ILIKE '%powershell%'", "confidence": 0.8, "result_summary": "156,930 rows (first 10,000 shown; stats below cover those) \u00b7 254 distinct sourceIPAddress \u00b7 390 distinct userAgent \u00b7 298 distinct eventName \u00b7 eventTime 2017-02-27 \u2192 2020-01-14", "attempts": 1, "tokens": 10649, "latency_ms": 74588, "error": null}, {"id": "9b", "name": "Suspicious User Agents", "status": "scored", "score": 0.2167, "checks": {"ran": 1.0, "columns": 0.08333333333333333, "match": 0.0, "counts": 0.0}, "shape": "aggregate", "expected": 101, "returned": 535, "matched": 0, "missing": 101, "extra": 535, "truncated": false, "total_rows": 3047, "sql": "WITH suspicious AS (SELECT eventID, eventTime, sourceIPAddress, userAgent, eventName, eventSource, awsRegion, userIdentityarn, userIdentityuserName, errorCode, requestID FROM cloudtrail WHERE userAgent ILIKE '%command/%') SELECT eventID, eventTime, sourceIPAddress, userAgent, eventName, eventSource, awsRegion, userIdentityarn, userIdentityuserName, errorCode, requestID FROM suspicious ORDER BY CAST(eventTime AS TIMESTAMP) DESC", "confidence": 0.9, "result_summary": "3,047 rows \u00b7 97 distinct sourceIPAddress \u00b7 535 distinct userAgent \u00b7 99 distinct eventName \u00b7 eventTime 2020-08-03 \u2192 2020-10-07", "attempts": 1, "tokens": 10615, "latency_ms": 7783, "error": null}, {"id": "10", "name": "Permanent Key Creation", "status": "scored", "score": 0.8056, "checks": {"ran": 1.0, "columns": 0.2222222222222222, "match": 1.0, "counts": null}, "shape": "rows", "expected": 40, "returned": 40, "matched": 40, "missing": 0, "extra": 0, "truncated": false, "total_rows": 40, "sql": "WITH iam_user_access_key_creation AS (SELECT eventID, eventTime, eventName, userIdentitytype, userIdentityarn, userIdentityuserName, sourceIPAddress, userAgent, awsRegion FROM cloudtrail WHERE eventName = 'CreateAccessKey' AND userIdentitytype = 'IAMUser') SELECT eventID, eventTime, userIdentityarn, userIdentityuserName, sourceIPAddress, userAgent, awsRegion FROM iam_user_access_key_creation ORDER BY CAST(eventTime AS TIMESTAMP) DESC", "confidence": 0.85, "result_summary": "40 rows \u00b7 32 distinct eventID \u00b7 3 distinct userIdentityarn \u00b7 3 distinct userIdentityuserName \u00b7 eventTime 2017-03-01 \u2192 2020-05-14", "attempts": 1, "tokens": 11168, "latency_ms": 9796, "error": null}]}, "after": {"run": {"label": "2026-10-29T19-39-48Z_v2", "source_run": "2026-10-29T19-39-48Z_v2", "prompt_version": "v2", "prompt_hash": "a63b974ab7b1", "model": "nvidia/nemotron-3.5-super-vl:free", "llm_provider": "openrouter", "max_self_correct": 2, "zero_row_value_check": true, "started_at": "2026-10-29T19:39:48.143136+00:00"}, "overall": {"score": 0.7941, "checks": {"ran": 1.0, "columns": 0.5837, "match": 0.8206, "counts": 0.6655}, "hypotheses": 11, "scored": 11, "failed": 0, "errors": 0, "skipped": []}, "usage": {"calls": 12, "input_tokens": 120016, "output_tokens": 19754, "total_tokens": 139770}, "hypotheses": [{"id": "1", "name": "Sign-in Failures (Brute Force/Bot Attacks)", "status": "scored", "score": 0.567, "checks": {"ran": 1.0, "columns": 0.125, "match": 0.5714285714285715, "counts": null}, "shape": "rows", "expected": 12, "returned": 9, "matched": 6, "missing": 6, "extra": 3, "truncated": false, "total_rows": 9, "sql": "WITH failed_signins AS (SELECT userIdentityarn, sourceIPAddress, userAgent FROM cloudtrail WHERE eventSource = 'signin.amazonaws.com' AND eventType = 'AwsConsoleSignIn' AND (NOT errorCode IS NULL OR NOT errorMessage IS NULL)) SELECT userIdentityarn, sourceIPAddress, userAgent, COUNT(*) AS count FROM failed_signins GROUP BY userIdentityarn, sourceIPAddress, userAgent ORDER BY count DESC", "confidence": 0.85, "result_summary": "9 rows \u00b7 8 distinct userAgent", "attempts": 1, "tokens": 12579, "latency_ms": 21330, "error": null}, {"id": "2", "name": "Root Access Through Console", "status": "scored", "score": 0.9959, "checks": {"ran": 1.0, "columns": 1.0, "match": 0.991869918699187, "counts": null}, "shape": "rows", "expected": 61, "returned": 62, "matched": 61, "missing": 0, "extra": 1, "truncated": false, "total_rows": 62, "sql": "SELECT * FROM cloudtrail WHERE eventType = 'AwsConsoleSignIn' AND userIdentitytype = 'Root' ORDER BY CAST(eventTime AS TIMESTAMP)", "confidence": 0.85, "result_summary": "62 rows \u00b7 61 distinct eventID \u00b7 14 distinct sourceIPAddress \u00b7 25 distinct userAgent \u00b7 eventTime 2017-02-18 \u2192 2020-10-07", "attempts": 1, "tokens": 11374, "latency_ms": 10571, "error": null}, {"id": "3", "name": "CloudTrail Disruption", "status": "scored", "score": 0.8421, "checks": {"ran": 1.0, "columns": 0.3684210526315789, "match": 1.0, "counts": null}, "shape": "rows", "expected": 4, "returned": 4, "matched": 4, "missing": 0, "extra": 0, "truncated": false, "total_rows": 4, "sql": "SELECT * FROM cloudtrail WHERE eventSource = 'cloudtrail.amazonaws.com' AND eventName IN ('StopLogging', 'DeleteTrail', 'UpdateTrail', 'PutEventSelectors') ORDER BY CAST(eventTime AS TIMESTAMP)", "confidence": 0.85, "result_summary": "4 rows \u00b7 3 distinct eventID \u00b7 3 distinct sourceIPAddress \u00b7 3 distinct userAgent \u00b7 eventTime 2017-08-03 \u2192 2019-08-23", "attempts": 1, "tokens": 11210, "latency_ms": 10649, "error": null}, {"id": "4", "name": "Unauthorized API Calls", "status": "scored", "score": 0.9256, "checks": {"ran": 1.0, "columns": 0.75, "match": 0.9423608369522306, "counts": 0.99329702555509}, "shape": "aggregate", "expected": 2387, "returned": 2679, "matched": 2387, "missing": 0, "extra": 292, "truncated": false, "total_rows": 2695, "sql": "WITH unauthorized_calls AS (SELECT userIdentityarn, eventName, errorCode FROM cloudtrail WHERE errorCode = 'AccessDenied' OR errorCode = 'Client.UnauthorizedOperation') SELECT userIdentityarn, eventName, errorCode, COUNT(*) AS count FROM unauthorized_calls GROUP BY userIdentityarn, eventName, errorCode ORDER BY count DESC", "confidence": 0.9, "result_summary": "2,695 rows \u00b7 10 distinct userIdentityarn \u00b7 1,074 distinct eventName \u00b7 2 distinct errorCode", "attempts": 1, "tokens": 11379, "latency_ms": 10725, "error": null}, {"id": "5", "name": "Whoami Reconnaissance", "status": "scored", "score": 0.9333, "checks": {"ran": 1.0, "columns": 0.6666666666666666, "match": 1.0, "counts": 1.0}, "shape": "aggregate", "expected": 4767, "returned": 4767, "matched": 4767, "missing": 0, "extra": 0, "truncated": false, "total_rows": 4767, "sql": "SELECT userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent, COUNT(*) AS count FROM cloudtrail WHERE eventName = 'GetCallerIdentity' GROUP BY userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent ORDER BY count DESC", "confidence": 0.85, "result_summary": "4,767 rows \u00b7 6 distinct userIdentityarn \u00b7 1 distinct eventName \u00b7 3,262 distinct sourceIPAddress", "attempts": 1, "tokens": 12243, "latency_ms": 17470, "error": null}, {"id": "6", "name": "Secrets Manager Access", "status": "scored", "score": 1.0, "checks": {"ran": 1.0, "columns": 1.0, "match": 1.0, "counts": null}, "shape": "rows", "expected": 1, "returned": 1, "matched": 1, "missing": 0, "extra": 0, "truncated": false, "total_rows": 1, "sql": "WITH secret_retrieval AS (SELECT * FROM cloudtrail WHERE eventSource = 'secretsmanager.amazonaws.com' AND eventName = 'GetSecretValue') SELECT * FROM secret_retrieval ORDER BY CAST(eventTime AS TIMESTAMP)", "confidence": 0.9, "result_summary": "1 rows \u00b7 eventTime 2020-02-04 \u2192 2020-02-04", "attempts": 1, "tokens": 11500, "latency_ms": 12204, "error": null}, {"id": "7", "name": "Large EC2 Instance Creation", "status": "scored", "score": 0.5188, "checks": {"ran": 1.0, "columns": 0.05, "match": 0.7719298245614036, "counts": 0.0}, "shape": "aggregate", "expected": 34, "returned": 23, "matched": 22, "missing": 12, "extra": 1, "truncated": true, "total_rows": 300622, "sql": "SELECT * FROM cloudtrail WHERE eventName = 'RunInstances' AND (requestParametersinstanceType LIKE '%.10xlarge' OR requestParametersinstanceType LIKE '%.12xlarge' OR requestParametersinstanceType LIKE '%.16xlarge' OR requestParametersinstanceType LIKE '%.18xlarge' OR requestParametersinstanceType LIKE '%.24xlarge' OR requestParametersinstanceType LIKE '%.32xlarge' OR requestParametersinstanceType LIKE '%.metal') ORDER BY CAST(eventTime AS TIMESTAMP)", "confidence": 0.75, "result_summary": "300,622 rows (first 10,000 shown; stats below cover those) \u00b7 9,680 distinct eventID \u00b7 5 distinct sourceIPAddress \u00b7 5 distinct userAgent \u00b7 eventTime 2018-04-16 \u2192 2019-08-21", "attempts": 1, "tokens": 13262, "latency_ms": 23371, "error": null}, {"id": "8", "name": "S3 Bucket Brute Force", "status": "scored", "score": 0.8684, "checks": {"ran": 1.0, "columns": 0.8333333333333334, "match": 0.7544483985765125, "counts": 1.0}, "shape": "aggregate", "expected": 212, "returned": 350, "matched": 212, "missing": 0, "extra": 138, "truncated": false, "total_rows": 350, "sql": "WITH bucket_acl_events AS (SELECT * FROM cloudtrail WHERE eventName = 'GetBucketAcl') SELECT userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent, COUNT(*) AS count FROM bucket_acl_events GROUP BY userIdentityarn, eventName, errorCode, sourceIPAddress, userAgent ORDER BY count DESC", "confidence": 0.85, "result_summary": "350 rows \u00b7 10 distinct userIdentityarn \u00b7 1 distinct eventName \u00b7 3 distinct errorCode", "attempts": 1, "tokens": 11655, "latency_ms": 18166, "error": null}, {"id": "9a", "name": "Suspicious User Agents", "status": "scored", "score": 0.948, "checks": {"ran": 1.0, "columns": 0.75, "match": 0.9950144319076358, "counts": 1.0}, "shape": "aggregate", "expected": 1896, "returned": 1915, "matched": 1896, "missing": 0, "extra": 19, "truncated": false, "total_rows": 2344, "sql": "SELECT userIdentityarn, sourceIPAddress, userAgent, COUNT(*) AS count FROM cloudtrail WHERE userAgent ILIKE '%kali%' OR userAgent ILIKE '%parrot%' OR userAgent ILIKE '%powershell%' GROUP BY userIdentityarn, sourceIPAddress, userAgent ORDER BY count DESC", "confidence": 0.9, "result_summary": "2,344 rows \u00b7 4 distinct userIdentityarn \u00b7 895 distinct sourceIPAddress \u00b7 1,477 distinct userAgent", "attempts": 1, "tokens": 12137, "latency_ms": 16363, "error": null}, {"id": "9b", "name": "Suspicious User Agents", "status": "scored", "score": 0.3333, "checks": {"ran": 1.0, "columns": 0.6666666666666666, "match": 0.0, "counts": 0.0}, "shape": "aggregate", "expected": 101, "returned": 535, "matched": 0, "missing": 101, "extra": 535, "truncated": false, "total_rows": 587, "sql": "WITH suspicious AS (SELECT userIdentityarn, userAgent FROM cloudtrail WHERE userAgent LIKE '%command/%') SELECT userIdentityarn, userAgent, COUNT(*) AS count FROM suspicious GROUP BY userIdentityarn, userAgent ORDER BY count DESC", "confidence": 0.8, "result_summary": "587 rows \u00b7 4 distinct userIdentityarn \u00b7 535 distinct userAgent", "attempts": 2, "tokens": 21706, "latency_ms": 44376, "error": null}, {"id": "10", "name": "Permanent Key Creation", "status": "scored", "score": 0.8026, "checks": {"ran": 1.0, "columns": 0.21052631578947367, "match": 1.0, "counts": null}, "shape": "rows", "expected": 40, "returned": 40, "matched": 40, "missing": 0, "extra": 0, "truncated": false, "total_rows": 40, "sql": "WITH iam_user_key_creation AS (SELECT * FROM cloudtrail WHERE eventName = 'CreateAccessKey' AND userIdentitytype = 'IAMUser') SELECT * FROM iam_user_key_creation ORDER BY CAST(eventTime AS TIMESTAMP)", "confidence": 0.9, "result_summary": "40 rows \u00b7 32 distinct eventID \u00b7 20 distinct sourceIPAddress \u00b7 20 distinct userAgent \u00b7 eventTime 2017-03-01 \u2192 2020-05-14", "attempts": 1, "tokens": 10725, "latency_ms": 5837, "error": null}]}, "notes": {"1": "The answer key keeps only the 12 failed ConsoleLogin events. The data has 26 failed console sign-ins: 12 ConsoleLogin plus 14 CheckMfa with the same 'No username found in supplied account' message, which a hunter would also want. The hypothesis' 'brute force' wording also invites grouped counts, while the key lists events.", "4": "The hypothesis names AccessDenied and UnauthorizedOperation. With the real value Client.UnauthorizedOperation there are 2,679 (eventName, userIdentityarn) groups; the key has 2,387, close to AccessDenied alone (2,411), so some groups and counts cannot match.", "8": "The answer key keeps only failed GetBucketAcl requests (AccessDenied, NoSuchBucket): 212 of the 350 (actor, IP, user agent, error code) groups. The hypothesis covers all attempts, so successful ones count as extra.", "9b": "The answer key's userAgent values are the 'command/...' substring extracted from longer user-agent strings. No userAgent in the data starts with 'command/', so no query over the raw column can reproduce these groups."}, "weights": {"ran": 0.2, "columns": 0.2, "match": 0.4, "counts": 0.2}}</script>
+<script>
+const D = JSON.parse(document.getElementById("data").textContent);
+const CHECKS = [
+  ["ran", "Ran", "The SQL executed without error"],
+  ["columns", "Right columns", "Overlap with the expected columns"],
+  ["match", "Right rows / groups", "F1 of the events or groups found"],
+  ["counts", "Right counts", "Exact counts for matched groups"],
+];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const pct = v => v == null ? "–" : v.toFixed(2);
+const num = v => v == null ? "–" : Number(v).toLocaleString();
+function chip(b, a) {
+  if (a == null || b == null) return '<span class="chip flat">–</span>';
+  const d = a - b, cls = d > 0.005 ? "up" : d < -0.005 ? "down" : "flat";
+  const sign = cls === "up" ? "+" : cls === "down" ? "−" : "±";
+  return `<span class="chip ${cls}">${sign}${Math.abs(d).toFixed(2)}</span>`;
+}
+function bar(label, v, cls) {
+  const w = v == null ? 0 : Math.max(0, Math.min(1, v)) * 100;
+  return `<div class="bar"><span>${label}</span><div class="track"><div class="fill ${cls}" style="width:${w}%">` +
+         `</div></div><span>${pct(v)}</span></div>`;
+}
+const pair = (b, a) => `<div class="bars">${bar("Before", b, "b")}${bar("After", a, "a")}</div>`;
+const runLine = r => `Prompt ${esc(r.prompt_version)} · self-correction ${r.max_self_correct} · value check ` +
+                     `${r.zero_row_value_check ? "on" : "off"}`;
+
+function hypothesis(hb, ha) {
+  const note = D.notes[ha.id];
+  const rows = CHECKS.map(([k, label]) => `<tr><td>${label}</td><td>${pct(hb.checks[k])}</td>` +
+                                         `<td>${pct(ha.checks[k])}</td><td>${chip(hb.checks[k], ha.checks[k])}</td></tr>`).join("");
+  const unit = ha.shape === "aggregate" ? "groups" : "rows";
+  const stats = [["Expected", ha.expected], ["Returned", ha.returned], ["Matched", ha.matched],
+                 ["Missing", ha.missing], ["Extra", ha.extra]]
+    .map(([l, v]) => `<div class="stat"><b>${num(v)}</b><span>${l} ${unit}</span></div>`).join("");
+  return `<details class="h"><summary>
+      <div class="hname">#${esc(ha.id)} ${esc(ha.name)}<small>Answer key expects ${ha.shape === "aggregate" ? "grouped counts" : "events"}` +
+      `${ha.status === "scored" ? "" : " · " + ha.status}</small></div>${pair(hb.score, ha.score)}<div>${chip(hb.score, ha.score)}</div></summary>
+    <div class="body">
+      ${note ? `<div class="note"><b>Answer-key note.</b> ${esc(note)}</div>` : ""}
+      <div class="stats">${stats}</div>
+      ${ha.result_summary ? `<div class="small">Found: ${esc(ha.result_summary)}</div>` : ""}
+      <table><thead><tr><th>Check</th><th>Before</th><th>After</th><th>Δ</th></tr></thead><tbody>${rows}
+        <tr><td><b>Score</b></td><td><b>${pct(hb.score)}</b></td><td><b>${pct(ha.score)}</b></td>
+        <td>${chip(hb.score, ha.score)}</td></tr></tbody></table>
+      <div class="small">After: ${ha.attempts || "–"} LLM call(s) · ${num(ha.tokens)} tokens · confidence ${pct(ha.confidence)}` +
+      `${ha.truncated ? ` · result truncated (${num(ha.total_rows)} rows in total)` : ""}</div>
+      <div><div class="small" style="margin-bottom:6px">After SQL</div><pre>${esc(ha.sql)}</pre></div>
+      <details class="sql"><summary>Show the before SQL</summary><pre>${esc(hb.sql)}</pre></details>
+    </div></details>`;
+}
+
+function render() {
+  const B = D.before, A = D.after, byId = Object.fromEntries(B.hypotheses.map(h => [h.id, h]));
+  const ob = B.overall, oa = A.overall;
+  const checks = CHECKS.map(([k, label, help]) => `<div class="card check"><h3>${label} ${chip(ob.checks[k], oa.checks[k])}` +
+                                                 `</h3><p>${help}</p>${pair(ob.checks[k], oa.checks[k])}</div>`).join("");
+  const weights = [["ran", "Ran"], ["columns", "Right columns"], ["match", "Right rows / groups"], ["counts", "Right counts"]]
+    .map(([k, l]) => `<div class="card"><b>${Math.round(D.weights[k] * 100)}%</b><div class="small">${l}</div></div>`).join("");
+  document.getElementById("app").innerHTML = `
+    <h1>Query generator evaluation</h1>
+    <p class="sub">${A.hypotheses.length} threat-hunting hypotheses, scored strictly against the answer key ·
+      model <code>${esc(A.run.model)}</code></p>
+    <div class="card hero">
+      <div class="before"><div class="label">Before</div><div class="big">${pct(ob.score)}</div>
+        <div class="meta">${runLine(B.run)}</div></div>
+      <div class="arrow">→</div>
+      <div class="after"><div class="label">After</div><div class="big">${pct(oa.score)}</div>
+        <div class="meta">${runLine(A.run)}</div></div>
+    </div>
+    <p class="small" style="text-align:center;margin-top:10px">Overall change ${chip(ob.score, oa.score)} ·
+      ${num(B.usage?.total_tokens)} → ${num(A.usage?.total_tokens)} tokens</p>
+    <h2>Score by check</h2>
+    <div class="checks">${checks}</div>
+    <h2>Each hypothesis</h2>
+    <div class="legend"><span><i class="dot" style="background:var(--before)"></i>Before</span>
+      <span><i class="dot" style="background:var(--after)"></i>After</span><span>Click a row for details</span></div>
+    ${A.hypotheses.map(ha => hypothesis(byId[ha.id] || {checks: {}}, ha)).join("")}
+    <h2>How a score is made</h2>
+    <div class="how">${weights}</div>
+    <p class="small">Each hypothesis scores 0–1 as a weighted sum of the four checks. Answers that list events have no
+      counts, so their weights become 25 / 25 / 50. A query that fails scores 0. The overall score is the plain average
+      over hypotheses.</p>
+    <footer>Before: ${esc(B.run.source_run || B.run.label)} · After: ${esc(A.run.source_run || A.run.label)}</footer>`;
+}
+render();
+</script>
+</body>
+</html>
