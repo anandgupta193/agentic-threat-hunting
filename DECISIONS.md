@@ -118,3 +118,4 @@
 | v1.6 | P1: D46 admission lock mode (`FOR NO KEY UPDATE`); query response `usage` now always filled |
 | v1.7 | P4: D47 scoring details, D48 run config from `/healthz`; 'before' run recorded in §15 (0.503) |
 | v1.8 | P5: D49 count-fallback fix and re-scoring, D50 prompt v2; §15 iteration log with the failure analysis; truncation feedback added to §18 |
+| v1.9 | P6: §14 prompting strategy, §16 challenges and §17 limitations completed; README, EVALUATION_REPORT and the evaluation dashboard added |

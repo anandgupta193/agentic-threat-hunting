@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Query Generator Evaluation</title>
+<style>
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --text: #16191d; --muted: #5d6673; --line: #e3e6ea;
+  --before: #b7bec8; --after: #2f6fde; --good: #1a7f4b; --good-bg: #e3f4ea; --bad: #b3261e; --bad-bg: #fbe7e5;
+  --flat: #5d6673; --flat-bg: #eef0f3; --note-bg: #fff7e0; --note-line: #e6c460; --code-bg: #f2f4f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111317; --surface: #1a1d22; --text: #e8eaed; --muted: #9aa3ae; --line: #2c3037;
+    --before: #4a515c; --after: #6b9bff; --good: #5fd08f; --good-bg: #173325; --bad: #ff8a80; --bad-bg: #3a1c1a;
+    --flat: #9aa3ae; --flat-bg: #24282e; --note-bg: #2e2a1a; --note-line: #8a7430; --code-bg: #14171b;
+  }
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 40px 0 12px; }
+.sub { color: var(--muted); margin: 0; overflow-wrap: anywhere; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.hero { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; margin-top: 24px;
+  text-align: center; }
+.hero .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.hero .big { font-size: 56px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hero .before .big { color: var(--muted); }
+.hero .after .big { color: var(--after); }
+.hero .meta { color: var(--muted); font-size: 13px; }
+.hero > div { min-width: 0; }
+.arrow { font-size: 28px; color: var(--muted); }
+.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+.chip.up { color: var(--good); background: var(--good-bg); }
+.chip.down { color: var(--bad); background: var(--bad-bg); }
+.chip.flat { color: var(--flat); background: var(--flat-bg); }
+.checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
+.check h3 { margin: 0; font-size: 15px; }
+.check p { margin: 2px 0 12px; color: var(--muted); font-size: 13px; }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 8px; font-size: 12px;
+  color: var(--muted); font-variant-numeric: tabular-nums; }
+.track { height: 8px; background: var(--flat-bg); border-radius: 4px; overflow: hidden; }
+.fill { height: 100%; border-radius: 4px; }
+.fill.b { background: var(--before); } .fill.a { background: var(--after); }
+.legend { display: flex; gap: 16px; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+details.h { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; }
+details.h > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 64px; gap: 16px; align-items: center; }
+details.h > summary::-webkit-details-marker { display: none; }
+details.h[open] > summary { border-bottom: 1px solid var(--line); }
+.hname { font-weight: 600; }
+.hname small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.body { padding: 16px; display: grid; gap: 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(110px, 100%), 1fr)); gap: 8px; }
+.stat { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; }
+pre { margin: 0; background: var(--code-bg); border-radius: 8px; padding: 12px; overflow-x: auto;
+  font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+.note { background: var(--note-bg); border-left: 3px solid var(--note-line); border-radius: 6px; padding: 10px 12px;
+  font-size: 14px; }
+.small { color: var(--muted); font-size: 13px; }
+details.sql > summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 12px; }
+.how .card { padding: 14px 16px; }
+.how b { font-size: 20px; }
+footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+@media (max-width: 640px) {
+  .hero { grid-template-columns: 1fr; } .arrow { transform: rotate(90deg); } .hero .big { font-size: 44px; }
+  details.h > summary { grid-template-columns: 1fr 64px; } details.h > summary .bars { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+const D = JSON.parse(document.getElementById("data").textContent);
+const CHECKS = [
+  ["ran", "Ran", "The SQL executed without error"],
+  ["columns", "Right columns", "Overlap with the expected columns"],
+  ["match", "Right rows / groups", "F1 of the events or groups found"],
+  ["counts", "Right counts", "Exact counts for matched groups"],
+];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const pct = v => v == null ? "–" : v.toFixed(2);
+const num = v => v == null ? "–" : Number(v).toLocaleString();
+function chip(b, a) {
+  if (a == null || b == null) return '<span class="chip flat">–</span>';
+  const d = a - b, cls = d > 0.005 ? "up" : d < -0.005 ? "down" : "flat";
+  const sign = cls === "up" ? "+" : cls === "down" ? "−" : "±";
+  return `<span class="chip ${cls}">${sign}${Math.abs(d).toFixed(2)}</span>`;
+}
+function bar(label, v, cls) {
+  const w = v == null ? 0 : Math.max(0, Math.min(1, v)) * 100;
+  return `<div class="bar"><span>${label}</span><div class="track"><div class="fill ${cls}" style="width:${w}%">` +
+         `</div></div><span>${pct(v)}</span></div>`;
+}
+const pair = (b, a) => `<div class="bars">${bar("Before", b, "b")}${bar("After", a, "a")}</div>`;
+const runLine = r => `Prompt ${esc(r.prompt_version)} · self-correction ${r.max_self_correct} · value check ` +
+                     `${r.zero_row_value_check ? "on" : "off"}`;
+
+function hypothesis(hb, ha) {
+  const note = D.notes[ha.id];
+  const rows = CHECKS.map(([k, label]) => `<tr><td>${label}</td><td>${pct(hb.checks[k])}</td>` +
+                                         `<td>${pct(ha.checks[k])}</td><td>${chip(hb.checks[k], ha.checks[k])}</td></tr>`).join("");
+  const unit = ha.shape === "aggregate" ? "groups" : "rows";
+  const stats = [["Expected", ha.expected], ["Returned", ha.returned], ["Matched", ha.matched],
+                 ["Missing", ha.missing], ["Extra", ha.extra]]
+    .map(([l, v]) => `<div class="stat"><b>${num(v)}</b><span>${l} ${unit}</span></div>`).join("");
+  return `<details class="h"><summary>
+      <div class="hname">#${esc(ha.id)} ${esc(ha.name)}<small>Answer key expects ${ha.shape === "aggregate" ? "grouped counts" : "events"}` +
+      `${ha.status === "scored" ? "" : " · " + ha.status}</small></div>${pair(hb.score, ha.score)}<div>${chip(hb.score, ha.score)}</div></summary>
+    <div class="body">
+      ${note ? `<div class="note"><b>Answer-key note.</b> ${esc(note)}</div>` : ""}
+      <div class="stats">${stats}</div>
+      ${ha.result_summary ? `<div class="small">Found: ${esc(ha.result_summary)}</div>` : ""}
+      <table><thead><tr><th>Check</th><th>Before</th><th>After</th><th>Δ</th></tr></thead><tbody>${rows}
+        <tr><td><b>Score</b></td><td><b>${pct(hb.score)}</b></td><td><b>${pct(ha.score)}</b></td>
+        <td>${chip(hb.score, ha.score)}</td></tr></tbody></table>
+      <div class="small">After: ${ha.attempts || "–"} LLM call(s) · ${num(ha.tokens)} tokens · confidence ${pct(ha.confidence)}` +
+      `${ha.truncated ? ` · result truncated (${num(ha.total_rows)} rows in total)` : ""}</div>
+      <div><div class="small" style="margin-bottom:6px">After SQL</div><pre>${esc(ha.sql)}</pre></div>
+      <details class="sql"><summary>Show the before SQL</summary><pre>${esc(hb.sql)}</pre></details>
+    </div></details>`;
+}
+
+function render() {
+  const B = D.before, A = D.after, byId = Object.fromEntries(B.hypotheses.map(h => [h.id, h]));
+  const ob = B.overall, oa = A.overall;
+  const checks = CHECKS.map(([k, label, help]) => `<div class="card check"><h3>${label} ${chip(ob.checks[k], oa.checks[k])}` +
+                                                 `</h3><p>${help}</p>${pair(ob.checks[k], oa.checks[k])}</div>`).join("");
+  const weights = [["ran", "Ran"], ["columns", "Right columns"], ["match", "Right rows / groups"], ["counts", "Right counts"]]
+    .map(([k, l]) => `<div class="card"><b>${Math.round(D.weights[k] * 100)}%</b><div class="small">${l}</div></div>`).join("");
+  document.getElementById("app").innerHTML = `
+    <h1>Query generator evaluation</h1>
+    <p class="sub">${A.hypotheses.length} threat-hunting hypotheses, scored strictly against the answer key ·
+      model <code>${esc(A.run.model)}</code></p>
+    <div class="card hero">
+      <div class="before"><div class="label">Before</div><div class="big">${pct(ob.score)}</div>
+        <div class="meta">${runLine(B.run)}</div></div>
+      <div class="arrow">→</div>
+      <div class="after"><div class="label">After</div><div class="big">${pct(oa.score)}</div>
+        <div class="meta">${runLine(A.run)}</div></div>
+    </div>
+    <p class="small" style="text-align:center;margin-top:10px">Overall change ${chip(ob.score, oa.score)} ·
+      ${num(B.usage?.total_tokens)} → ${num(A.usage?.total_tokens)} tokens</p>
+    <h2>Score by check</h2>
+    <div class="checks">${checks}</div>
+    <h2>Each hypothesis</h2>
+    <div class="legend"><span><i class="dot" style="background:var(--before)"></i>Before</span>
+      <span><i class="dot" style="background:var(--after)"></i>After</span><span>Click a row for details</span></div>
+    ${A.hypotheses.map(ha => hypothesis(byId[ha.id] || {checks: {}}, ha)).join("")}
+    <h2>How a score is made</h2>
+    <div class="how">${weights}</div>
+    <p class="small">Each hypothesis scores 0–1 as a weighted sum of the four checks. Answers that list events have no
+      counts, so their weights become 25 / 25 / 50. A query that fails scores 0. The overall score is the plain average
+      over hypotheses.</p>
+    <footer>Before: ${esc(B.run.source_run || B.run.label)} · After: ${esc(A.run.source_run || A.run.label)}</footer>`;
+}
+render();
+</script>
+</body>
+</html>

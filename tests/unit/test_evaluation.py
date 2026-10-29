@@ -109,3 +109,12 @@ def test_raw_rows_never_use_an_id_column_as_the_count() -> None:
                                                 [["p2.16xlarge", "811596193553"]]))
     assert s.comparison is not None and "count" not in s.comparison.column_map
     assert s.checks["counts"] == 0.0
+
+
+def test_dashboard_embeds_both_runs_safely(tmp_path: Path) -> None:
+    from evaluation.dashboard import render_dashboard
+    run = {"run": {"label": "r"}, "overall": {"score": 0.5, "checks": {}}, "usage": None,
+           "hypotheses": [{"id": "1", "name": "</script><b>x", "score": 0.5, "checks": {}}]}
+    page = render_dashboard(run, run)
+    assert page.count("</script>") == 2  # the two real closing tags; the payload's is escaped
+    assert "<\\/script><b>x" in page

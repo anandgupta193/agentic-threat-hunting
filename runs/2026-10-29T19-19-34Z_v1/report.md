@@ -137,7 +137,7 @@ Extra (returned, not expected):
 
 ### 8. S3 Bucket Brute Force: scored
 
-> **Answer-key note:** The answer key keeps only failed GetBucketAcl requests (AccessDenied, NoSuchBucket): 212 of the 350 (actor, IP, user agent, error code) groups. The hypothesis covers all attempts, so successful ones count as extra.
+> **Answer-key note:** The answer key keeps 212 of the 350 GetBucketAcl (actor, IP, user agent, error code) groups: failed requests only (AccessDenied, NoSuchBucket), and not all of those (the data has 270 failed-request groups). The hypothesis covers all attempts, so successful requests and the other failures count as extra.
 
 Expected 163 groups, returned 67 (total 100): 42 matched, 121 missing, 25 extra. Matched on `userIdentityarn, sourceIPAddress`.
 API summary: 100 rows · 61 distinct sourceIPAddress · 6 distinct userIdentityarn · 17 distinct userIdentityaccessKeyId

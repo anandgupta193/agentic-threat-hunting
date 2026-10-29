@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 
+from evaluation.dashboard import render_dashboard
 from evaluation.loaders import ROOT, Hypothesis
 from evaluation.normalizers import Table
 from evaluation.report import build_results, render_compare, write_run
@@ -185,4 +186,7 @@ def compare(before: Path, after: Path) -> tuple[Path, str]:
     text = render_compare(b, a)
     out = after / f"compare_vs_{before.name}.md"
     out.write_text(text)
+    page = render_dashboard(b, a)
+    (after / "dashboard.html").write_text(page)
+    (ROOT / "evaluation_dashboard.html").write_text(page)  # stable path next to evaluation_results.json
     return out, text
