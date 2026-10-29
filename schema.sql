@@ -1,0 +1,2 @@
+-- Credit store schema (Postgres 16). Applied idempotently at API startup.
+-- Tables are added in P1: users, query_requests, token_usage (see APPROACH.md §5).

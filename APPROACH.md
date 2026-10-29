@@ -120,7 +120,7 @@ The full log, with alternatives considered and superseded choices, is in [`DECIS
 | SQL safety | Allowlist validator + locked-down DuckDB (read-only, no external access, configuration locked) (D41) | Defence in depth around untrusted LLM-written SQL |
 | Query quality | Static schema card with real values + a zero-row value check that triggers self-correction (D33) | Catches value traps such as `UnauthorizedOperation` vs `Client.UnauthorizedOperation` without extra tool calls |
 | Confidence | Computed deterministically by the harness from objective signals, with reasons (D34) | Explainable and repeatable; LLM self-ratings are poorly calibrated |
-| LLM | Claude Sonnet 5.5, temperature 0, structured output via tool use; prompts as versioned files (D6, D27) | Strong SQL generation; repeatable runs; guaranteed explanation fields |
+| LLM | Claude Sonnet 5.5 with schema-constrained structured output and a fixed effort level; prompts as versioned files; provider switch: Anthropic API, OpenRouter, or local Claude Code CLI (D6, D27, D44) | Strong SQL generation; guaranteed explanation fields; runs with an API key or a Claude subscription |
 | Overspend | Let the call finish, block the next; in-flight claim at admission (D4) | Concurrent calls can't both spend the last credits; overshoot ≤ one call |
 | Windows | Fixed UTC blocks; a call counts in the window it was admitted in (D10, D11) | Exact 00/06/12/18 boundaries; no split accounting |
 | Retries | Every self-correction attempt is metered and re-admitted (D12) | Every LLM call spends credits, as the brief requires |
@@ -166,7 +166,7 @@ app/
     credits/      controller.py  service.py  repository.py  dtos.py  models.py (TokenUsage)  policy.py (pure rules, §7)
     queries/      controller.py  service.py  repository.py  dtos.py  models.py (QueryRequest)
     harness/      pipeline.py  stages.py  trace.py  confidence.py   (§8)
-    llm/          gateway.py  prompt_registry.py
+    llm/          types.py (LLMGateway protocol)  anthropic_gateway.py  openrouter_gateway.py  claude_code_gateway.py  fake_gateway.py  factory.py  prompt_registry.py
     query_engine/ schema_card.py  validator.py  allowlist.py  executor.py  value_check.py
 evaluation/
   runner.py  scorer.py  normalizers.py  metrics.py  report.py  loaders.py (wraps utils.py)
@@ -450,7 +450,7 @@ One request flows through small, independently testable stages with typed inputs
 ```
 Hypothesis
   └─► [1] Build prompt   : versioned system prompt + cached schema card + title + hypothesis (+ prior SQL and error on retry)
-  └─► [2] Generate       : LLM via tool use → GenerationDraft {interpretation, reasoning, assumptions[],
+  └─► [2] Generate       : LLM structured output (JSON schema) → GenerationDraft {interpretation, reasoning, assumptions[],
                            sql, output_kind (rows|aggregate)}
   └─► [3] Validate       : allowlist (§8.3): one SELECT/WITH, only `cloudtrail`, only its 19 columns,
                            only approved functions; LIMIT injected/capped
@@ -466,7 +466,7 @@ Hypothesis
 - The pipeline receives a `CreditGuard` callback (`admit` / `finalize`) for each LLM attempt, so credit logic stays in `CreditService` and is not tangled into the harness.
 - **Trace:** for each attempt, the tokens, latency, outcome and error, plus timings per stage. It is returned in the API response and stored in the run folder.
 
-**Why tool use for structured output:** the response has a guaranteed JSON schema. No regex parsing of free text, and the explainability fields are always present.
+**Why structured output (JSON schema):** the response is guaranteed to match the schema. No regex parsing of free text, and the explainability fields are always present.
 
 ### 8.1 Prompts as files (D27)
 All prompt text lives in **separate files** under `prompts/<version>/`, never as strings in Python code:
@@ -553,7 +553,7 @@ The result is clamped to [0, 1]. The weights live in config and are documented, 
 ### 9.3 Run folder (a new one per run, D19)
 ```
 runs/2026-10-29T14-05-12Z_v1/
-  run_config.json            # prompt_version, prompt_hash, model, temperature, mode (live|replay), source run, settings, dataset file hash
+  run_config.json            # prompt_version, prompt_hash, model, llm_provider, effort, mode (live|replay), source run, settings, dataset file hash
   responses/<hypothesis_id>.json   # raw API response (SQL, explanation, rows, trace, usage)
   evaluation_results.json    # per-hypothesis + overall metrics + user credits/usage
   report.md                  # readable summary table
@@ -657,9 +657,14 @@ Together with the API's `result_summary` (what was found), this covers the brief
   ```
   ANTHROPIC_API_KEY=
   LLM_MODEL=claude-sonnet-5-5
-  LLM_TEMPERATURE=0
-  LLM_MAX_TOKENS=2000
-  LLM_TIMEOUT_S=60
+  LLM_PROVIDER=anthropic          # anthropic | openrouter | claude_code (local CLI on your subscription, dev only) (D44)
+  OPENROUTER_API_KEY=             # when LLM_PROVIDER=openrouter
+  OPENROUTER_MODEL=anthropic/claude-sonnet-5.5
+  LLM_EFFORT=medium               # sampling params (temperature) are not supported by the model
+  LLM_MAX_TOKENS=8000             # includes thinking tokens
+  LLM_TIMEOUT_S=90
+  CLAUDE_CLI_PATH=claude
+  CLAUDE_CLI_MAX_CONCURRENCY=2
   PROMPT_VERSION=v2
   COMPOSE_PROJECT_NAME=threat-hunt
   POSTGRES_USER=threat_hunt
@@ -727,7 +732,7 @@ Tests use pytest + pytest-asyncio, a `FakeGateway` (scripted responses with toke
 - [ ] Evaluator normalisers and metrics on small fixtures; replay reproduces the same scores
 - [ ] `main.py` failure handling (§9.6) with a stubbed API: skipped, retried once, incomplete
 
-**Live (opt-in, D43):** `pytest -m live` sends one real hypothesis through the real Anthropic gateway. It checks that the tool output parses, that `response.usage` (including cache fields) is recorded in `token_usage`, and that the SQL runs. It's skipped automatically when `ANTHROPIC_API_KEY` is unset and costs about 10K tokens.
+**Live (opt-in, D43):** `pytest -m live` sends one real hypothesis through the configured real gateway (`anthropic` or `claude_code`). It checks that the structured output parses, that `response.usage` (including cache fields) is recorded in `token_usage`, and that the SQL runs. It's skipped automatically when `ANTHROPIC_API_KEY` is unset and costs about 10K tokens.
 
 ---
 
