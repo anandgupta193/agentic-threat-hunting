@@ -1,4 +1,4 @@
-"""App factory + lifespan. Singletons (DB, clock; later DuckDB, schema card, LLM) live on `app.state`."""
+"""App factory + lifespan. Singletons (DB, clock, LLM, DuckDB executor, schema card) live on `app.state`."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -18,6 +18,9 @@ from app.core.middleware import RequestContextMiddleware
 from app.db.engine import Database
 from app.modules.llm.factory import build_gateway
 from app.modules.llm.types import LLMGateway
+from app.modules.query_engine.executor import DuckDBExecutor
+from app.modules.query_engine.schema_card import render_schema_card
+from app.modules.query_engine.value_check import ValueChecker
 
 log = get_logger(__name__)
 
@@ -39,9 +42,17 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
+            executor = DuckDBExecutor(settings.duckdb_path, threads=settings.duckdb_threads,
+                                      memory_limit=settings.duckdb_memory_limit, timeout_s=settings.query_timeout_s)
+            schema_card = executor.schema_card()
+        except Exception as exc:
+            log.critical("startup_dataset_failed", path=str(settings.duckdb_path), error=str(exc))
+            raise
+        try:
             gateway = llm or build_gateway(settings)
         except RuntimeError as exc:
             log.critical("startup_llm_failed", provider=settings.llm_provider, error=str(exc))
+            executor.close()
             raise
         db = Database(settings.db_url, pool_size=settings.db_pool_size)
         try:
@@ -50,18 +61,24 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
             log.critical("startup_db_failed", exc_type=type(exc).__name__, error=str(exc))
             await db.dispose()
             await gateway.aclose()
+            executor.close()
             raise
         app.state.settings = settings
         app.state.db = db
         app.state.clock = clock or SystemClock()
         app.state.llm = gateway
+        app.state.executor = executor
+        app.state.schema_card = schema_card
+        app.state.schema_card_text = render_schema_card(schema_card)
+        app.state.value_checker = ValueChecker(schema_card, executor)
         log.info("startup_complete", llm_provider=gateway.provider, model=gateway.model,
-                 prompt_version=settings.prompt_version)
+                 prompt_version=settings.prompt_version, dataset_rows=schema_card["row_count"])
         try:
             yield
         finally:
             await gateway.aclose()
             await db.dispose()
+            executor.close()
             log.info("shutdown_complete")
 
     app = FastAPI(title="Agentic Threat Hunting API", version="0.1.0", lifespan=lifespan)
@@ -71,7 +88,7 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None,
 
     @app.get("/healthz", tags=["ops"])
     async def healthz(request: Request, db: Annotated[Database, Depends(get_db)]) -> JSONResponse:
-        checks = {"db": await db.ping()}
+        checks = {"db": await db.ping(), "duckdb": request.app.state.executor.ping()}
         ok = all(checks.values())
         llm: LLMGateway = request.app.state.llm
         return JSONResponse(status_code=200 if ok else 503, content={

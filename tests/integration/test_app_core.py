@@ -6,7 +6,7 @@ import httpx
 async def test_healthz_ok_with_request_id(client: httpx.AsyncClient) -> None:
     r = await client.get("/healthz")
     assert r.status_code == 200
-    assert r.json()["checks"] == {"db": True}
+    assert r.json()["checks"] == {"db": True, "duckdb": True}
     assert r.headers["x-request-id"].startswith("req_")
 
 

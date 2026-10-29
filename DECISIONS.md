@@ -106,3 +106,4 @@
 | v1.1 | D6 updated (structured outputs, effort instead of temperature); D44 dual LLM provider (`anthropic` / `claude_code`) |
 | v1.2 | D44: added the `openrouter` provider |
 | v1.3 | D44: developer runs use the free `nvidia/nemotron-3.5-super-vl:free` model via OpenRouter |
+| v1.4 | P2 findings: 1,939,207 records (not 1,939,214 lines), corrected cardinalities; schema card stored in `_meta`, `eventTime` described by its range |
